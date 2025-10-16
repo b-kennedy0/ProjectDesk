@@ -1,5 +1,3 @@
-auth.ts
-```ts
 import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import AzureAD from 'next-auth/providers/azure-ad';
@@ -62,4 +60,3 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
-```

@@ -1,5 +1,3 @@
-Layout.tsx
-```tsx
 import Head from 'next/head';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
@@ -28,4 +26,3 @@ export default function Layout({ title, children }: { title?: string; children: 
     </div>
   );
 }
-```

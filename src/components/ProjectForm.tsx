@@ -1,5 +1,3 @@
-ProjectForm.tsx
-```tsx
 import { useState } from 'react';
 
 export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
@@ -59,4 +57,3 @@ export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
     </div>
   );
 }
-```

@@ -1,5 +1,3 @@
-package.json
-```json
 {
   "name": "projectdesk",
   "version": "0.1.0",
@@ -35,4 +33,3 @@ package.json
     "typescript": "^5.4.5"
   }
 }
-```

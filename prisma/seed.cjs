@@ -1,5 +1,3 @@
-seed.cjs
-```js
 // Simple seed to create a demo supervisor user for local credentials login
 // User: demo@projectdesk.local  Password: password123
 
@@ -31,4 +29,3 @@ main().catch(e => {
 }).finally(async () => {
   await prisma.$disconnect();
 });
-```
