@@ -60,3 +60,10 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+export function requireRole(role: string, userRole?: string) {
+  if (!userRole) return false;
+  if (role === 'supervisor') return userRole === 'supervisor' || userRole === 'admin';
+  if (role === 'admin') return userRole === 'admin';
+  return true; // anyone
+}

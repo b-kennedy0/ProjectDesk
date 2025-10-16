@@ -13,11 +13,12 @@ export default function Layout({ title, children }: { title?: string; children: 
         <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
           <Link href="/" className="font-semibold">ProjectDesk</Link>
           <div className="flex items-center gap-3">
-            <Link href="/dashboard" className="text-sm">Dashboard</Link>
-            {session && (
-              <button onClick={() => signOut()} className="text-sm border px-3 py-1 rounded-md">Sign out</button>
-            )}
-          </div>
+  <Link href="/dashboard" className="text-sm">Dashboard</Link>
+  <Link href="/notifications" className="text-sm">Notifications</Link>
+  {session && (
+    <button onClick={() => signOut()} className="text-sm border px-3 py-1 rounded-md">Sign out</button>
+  )}
+</div>
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">

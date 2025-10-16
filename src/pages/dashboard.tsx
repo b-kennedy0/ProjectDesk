@@ -22,14 +22,16 @@ export default function Dashboard() {
       ) : data.length === 0 ? (
         <p className="text-gray-600">No projects yet. Create your first project.</p>
       ) : (
-        <ul className="space-y-3">
-          {data.map((p: any) => (
-            <li key={p.id} className="border rounded-md p-4">
-              <div className="font-medium">{p.title}</div>
-              {p.description && <div className="text-sm text-gray-600">{p.description}</div>}
-            </li>
-          ))}
-        </ul>
+        <ul className="grid gap-4 sm:grid-cols-2">
+  {data.map((p: any) => (
+    <li key={p.id} className="border rounded-md p-4 hover:bg-gray-50 transition">
+      <a href={`/projects/${p.id}`} className="block">
+        <div className="font-medium text-lg">{p.title}</div>
+        {p.description && <div className="text-sm text-gray-600 mt-1">{p.description}</div>}
+      </a>
+    </li>
+  ))}
+</ul>
       )}
     </Layout>
   );
