@@ -89,6 +89,13 @@ export default function ProjectTasks() {
                           ? new Date(task.dueDate).toLocaleDateString()
                           : "N/A"}
                       </p>
+                      {task.dueDate &&
+                        new Date(task.dueDate) < new Date() &&
+                        task.status !== "done" && (
+                          <span className="inline-block bg-red-100 text-red-700 text-xs font-semibold px-2 py-0.5 rounded mt-1">
+                            ⚠ Overdue
+                          </span>
+                      )}
                     </div>
 
 <span
