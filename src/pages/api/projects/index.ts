@@ -1,48 +1,53 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
+import type { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "@/lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getServerSession(req, res, authOptions);
-  if (!session) return res.status(401).json({ error: 'Unauthorized' });
+  if (req.method === "POST") {
+    try {
+      const { title, description, startDate, endDate, category } = req.body;
 
-  const userId = Number((session.user as any).id);
+      const project = await prisma.project.create({
+        data: {
+          title,
+          description,
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null,
+          category: category || "student-project",
+          supervisorId: 1,
+        },
+      });
 
-  if (req.method === 'GET') {
-    // Supervisors see their projects; others see projects they belong to
-    const role = (session.user as any).role as string;
-    const projects = role === 'supervisor'
-      ? await prisma.project.findMany({ where: { supervisorId: userId }, orderBy: { createdAt: 'desc' } })
-      : await prisma.project.findMany({
-          where: { members: { some: { userId } } },
-          orderBy: { createdAt: 'desc' },
-        });
-    return res.json(projects);
+      return res.status(201).json(project);
+    } catch (error) {
+      console.error("Error creating project:", error);
+      return res.status(500).json({ error: "Internal Server Error" });
+    }
   }
 
-  if (req.method === 'POST') {
-    const role = (session.user as any).role as string;
-    if (role !== 'supervisor') return res.status(403).json({ error: 'Forbidden' });
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET");
+    return res.status(405).end("Method Not Allowed");
+  }
 
-    const { title, description, startDate, endDate } = req.body as {
-      title: string; description?: string; startDate?: string; endDate?: string;
-    };
+  try {
+    const { category } = req.query;
 
-    if (!title) return res.status(400).json({ error: 'Title is required' });
-
-    const project = await prisma.project.create({
-      data: {
-        title,
-        description,
-        supervisorId: userId,
-        startDate: startDate ? new Date(startDate) : null,
-        endDate: endDate ? new Date(endDate) : null,
+    const projects = await prisma.project.findMany({
+      where: category ? { category: String(category) } : {},
+      include: {
+        students: true,
+        collaborators: true,
+        supervisor: true,
       },
+      orderBy: [
+        { endDate: "asc" },
+        { title: "asc" },
+      ],
     });
-    return res.status(201).json(project);
-  }
 
-  res.setHeader('Allow', 'GET, POST');
-  return res.status(405).end('Method Not Allowed');
+    return res.json(projects);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
 }
