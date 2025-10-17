@@ -34,6 +34,7 @@ model Project {
   category    String? // e.g. "student-project", "collaboration"
   startDate   DateTime?
   endDate     DateTime?
+  isCompleted  Boolean  @default(false)
 
   // --- Supervisor + participants ---
   supervisor    User   @relation("ProjectSupervisor", fields: [supervisorId], references: [id])

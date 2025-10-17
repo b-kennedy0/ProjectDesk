@@ -30,19 +30,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { category } = req.query;
+    const { category, isCompleted } = req.query;
+
+    const where: any = {};
+
+    if (category) where.category = String(category);
+    if (isCompleted !== undefined) {
+      where.isCompleted = isCompleted === "true";
+    }
 
     const projects = await prisma.project.findMany({
-      where: category ? { category: String(category) } : {},
+      where,
       include: {
         students: true,
         collaborators: true,
         supervisor: true,
       },
-      orderBy: [
-        { endDate: "asc" },
-        { title: "asc" },
-      ],
+      orderBy: [{ endDate: "asc" }, { title: "asc" }],
     });
 
     return res.json(projects);

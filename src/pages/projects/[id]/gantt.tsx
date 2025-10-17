@@ -24,7 +24,22 @@ export default function GanttPage() {
 
   if (!tasks) return <Layout title="Gantt"><p>Loading…</p></Layout>;
 
-  const ganttTasks: Task[] = tasks.map((t: any) => ({
+  if (!tasks || tasks.length === 0) {
+    return (
+      <Layout title="Gantt Chart">
+        <div className="max-w-5xl mx-auto">
+          <div className="p-6 border rounded-md bg-gray-50 text-center text-gray-600">
+            <h2 className="text-lg font-semibold mb-2">No Tasks Available</h2>
+            <p>You can add new tasks from the Tasks tab to populate the Gantt chart.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const ganttTasks: Task[] = tasks
+    .filter((t: any) => t.dueDate)
+    .map((t: any) => ({
     id: String(t.id),
     name: t.title,
     start: t.dueDate
