@@ -75,13 +75,38 @@ export default function ProjectTasks() {
                       <p className="text-sm text-gray-500">
                         {task.description}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p
+                        className={`text-xs ${
+                          task.dueDate &&
+                          new Date(task.dueDate) < new Date() &&
+                          task.status !== "done"
+                            ? "text-red-600 font-semibold"
+                            : "text-gray-400"
+                        }`}
+                      >
                         Due:{" "}
                         {task.dueDate
                           ? new Date(task.dueDate).toLocaleDateString()
                           : "N/A"}
                       </p>
                     </div>
+
+<span
+  onClick={() => router.push(`/tasks/${task.id}`)}
+  className={`cursor-pointer px-2 py-1 rounded text-xs font-medium ${
+    task.status === "done"
+      ? "bg-green-100 text-green-700"
+      : task.status === "in_progress"
+      ? "bg-blue-100 text-blue-700"
+      : "bg-gray-100 text-gray-700"
+  }`}
+>
+  {task.status === "done"
+    ? "Done"
+    : task.status === "in_progress"
+    ? "In Progress"
+    : "To Do"}
+</span>
 
                     <button
                       className={`text-sm ${

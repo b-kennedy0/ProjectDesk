@@ -33,16 +33,6 @@ export default function ProjectOverview() {
         )
       : 0;
 
-  // Compute status (example logic)
-  const status = (() => {
-    const overdueTasks = project.tasks?.filter(
-      (t: any) => new Date(t.dueDate) < new Date() && t.status !== "done"
-    ).length;
-    if (!overdueTasks) return "On Track";
-    if (overdueTasks === 1) return "At Risk";
-    if (overdueTasks > 1 && overdueTasks < 3) return "Danger";
-    return "Failing";
-  })();
 
   return (
     <Layout title={`Project: ${project.title}`}>
@@ -63,16 +53,16 @@ export default function ProjectOverview() {
             <div className="flex items-center space-x-3">
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  status === "On Track"
+                  project.status === "On Track"
                     ? "bg-green-100 text-green-800"
-                    : status === "At Risk"
+                    : project.status === "At Risk"
                     ? "bg-yellow-100 text-yellow-800"
-                    : status === "Danger"
+                    : project.status === "Danger"
                     ? "bg-orange-100 text-orange-800"
                     : "bg-red-100 text-red-800"
                 }`}
               >
-                {status}
+                {project.status}
               </span>
               <span className="text-gray-600 text-sm">Project Status</span>
             </div>

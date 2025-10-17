@@ -36,6 +36,36 @@ export default function TaskDetail() {
         </p>
 
         <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 mb-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={task.status}
+                onChange={async (e) => {
+                  const newStatus = e.target.value;
+                  try {
+                    const res = await fetch(`/api/tasks`, {
+                      method: "PATCH",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ id: task.id, status: newStatus }),
+                    });
+                    if (!res.ok) throw new Error("Failed to update status");
+                    toast.success("Task status updated");
+                    mutate();
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("Error updating task status");
+                  }
+                }}
+                className="border rounded px-2 py-1 text-sm bg-white text-gray-700"
+              >
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+              </select>
+            </div>
+          </div>
+
           <button
             onClick={toggleComplete}
             className={`px-4 py-2 rounded-md ${

@@ -35,6 +35,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: { flagged: !wasFlagged },
     });
 
+    import { updateProjectStatus } from "@/lib/updateProjectStatus";
+
+// ...
+await updateProjectStatus(updatedTask.projectId);
+
     // ✅ Only create a notification when newly flagged
     if (!wasFlagged) {
       await prisma.notification.create({

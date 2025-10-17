@@ -11,7 +11,7 @@ model User {
   id           Int     @id @default(autoincrement())
   name         String?
   email        String  @unique
-  role         String  @default("student") // 'supervisor' | 'student' | 'collaborator' | 'admin'
+  role         UserRole  @default(STUDENT)
   supervisorId Int?
   passwordHash String? // used only for local Credentials auth (nullable for SSO users)
 
@@ -36,6 +36,7 @@ model Project {
   startDate   DateTime?
   endDate     DateTime?
   isCompleted Boolean   @default(false)
+  archived    Boolean   @default(false)
 
   // --- Supervisor + participants ---
   supervisor    User   @relation("ProjectSupervisor", fields: [supervisorId], references: [id])
@@ -49,6 +50,7 @@ model Project {
   notifications Notification[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
+  status       String   @default("On Track")
 }
 
 model ProjectMember {
@@ -112,4 +114,11 @@ model Notification {
 
   @@index([recipientId, read])
   @@index([projectId])
+}
+
+enum UserRole {
+  SUPERVISOR
+  STUDENT
+  COLLABORATOR
+  ADMIN
 }

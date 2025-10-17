@@ -20,8 +20,9 @@ export default function Dashboard() {
 
   if (!data) return <Layout title="Dashboard"><p>Loading…</p></Layout>;
 
-  const activeProjects = data.filter((p: any) => !p.isCompleted);
-  const completedProjects = data.filter((p: any) => p.isCompleted);
+  const projects = Array.isArray(data?.projects) ? data.projects : [];
+  const activeProjects = projects.filter((p: any) => !p.isCompleted);
+  const completedProjects = projects.filter((p: any) => p.isCompleted);
 
   const renderProject = (p: any) => {
     const progress = (() => {
@@ -32,8 +33,8 @@ export default function Dashboard() {
       return Math.min(100, Math.max(0, ((now - start) / (end - start)) * 100));
     })();
 
-    const progressColor =
-      progress < 70 ? "bg-green-500" : progress < 90 ? "bg-yellow-500" : "bg-red-500";
+    // Always use blue for progress bar
+    const progressColor = "bg-blue-500";
 
     const assignedPeople = [
       ...(p.students?.map((s: any) => s.name) || []),
@@ -73,6 +74,25 @@ export default function Dashboard() {
               ? new Date(p.endDate).toLocaleDateString()
               : "?"}
           </p>
+
+          {/* Project status */}
+          {p.status && (
+            <p
+              className={`text-xs mt-1 ${
+                p.status === "On Track"
+                  ? "text-blue-600"
+                  : p.status === "At Risk"
+                  ? "text-yellow-600"
+                  : (p.status === "Failing" || p.status === "Behind Schedule")
+                  ? "text-red-600"
+                  : p.status === "Completed"
+                  ? "text-gray-600"
+                  : "text-gray-500"
+              }`}
+            >
+              {p.status}
+            </p>
+          )}
 
           <div className="h-2 bg-gray-200 rounded-full mt-2">
             <div

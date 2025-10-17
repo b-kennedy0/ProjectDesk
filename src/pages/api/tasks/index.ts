@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { updateProjectStatus } from '@/lib/updateProjectStatus';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = await getServerSession(req, res, authOptions);
@@ -37,6 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         dependencyTaskId: dependencyTaskId ?? null,
       },
     });
+    await updateProjectStatus(task.projectId);
     return res.status(201).json(task);
   }
 

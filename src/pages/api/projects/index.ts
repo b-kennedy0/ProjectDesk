@@ -1,7 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../auth/[...nextauth]";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const session = await getServerSession(req, res, authOptions);
+
+  if (!session || !session.user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
   if (req.method === "POST") {
     try {
       const { title, description, startDate, endDate, category } = req.body;
@@ -13,7 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           startDate: startDate ? new Date(startDate) : null,
           endDate: endDate ? new Date(endDate) : null,
           category: category || "student-project",
-          supervisorId: 1,
+          supervisor: {
+            connect: { email: session.user.email }, // ✅ Connect logged-in supervisor
+          },
         },
       });
 
@@ -25,14 +35,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method !== "GET") {
-    res.setHeader("Allow", "GET");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).end("Method Not Allowed");
   }
 
   try {
     const { category, isCompleted } = req.query;
-
-    const where: any = {};
+    const where: any = {
+      supervisor: { email: session.user.email }, // ✅ Filter by logged-in supervisor
+    };
 
     if (category) where.category = String(category);
     if (isCompleted !== undefined) {
@@ -45,11 +56,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         students: true,
         collaborators: true,
         supervisor: true,
+        tasks: true,
       },
       orderBy: [{ endDate: "asc" }, { title: "asc" }],
     });
 
-    return res.json(projects);
+    return res.status(200).json({ projects }); // ✅ Return as object for consistency
   } catch (error) {
     console.error("Error fetching projects:", error);
     return res.status(500).json({ error: "Internal Server Error" });
