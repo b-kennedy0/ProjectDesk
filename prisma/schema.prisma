@@ -25,6 +25,7 @@ model User {
   comments              Comment[]
   sentNotifications     Notification[]  @relation("ActorNotifications")
   receivedNotifications Notification[]  @relation("RecipientNotifications")
+  assignedTasks         Task[]          @relation("TaskAssignee")
 }
 
 model Project {
@@ -34,7 +35,7 @@ model Project {
   category    String? // e.g. "student-project", "collaboration"
   startDate   DateTime?
   endDate     DateTime?
-  isCompleted  Boolean  @default(false)
+  isCompleted Boolean   @default(false)
 
   // --- Supervisor + participants ---
   supervisor    User   @relation("ProjectSupervisor", fields: [supervisorId], references: [id])
@@ -47,7 +48,7 @@ model Project {
   tasks         Task[]
   notifications Notification[]
   createdAt     DateTime        @default(now())
-  updatedAt DateTime            @updatedAt
+  updatedAt     DateTime        @updatedAt
 }
 
 model ProjectMember {
@@ -72,6 +73,8 @@ model Task {
   dueDate          DateTime?
   dependencyTaskId Int?
   flagged          Boolean        @default(false)
+  assignee         User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  assigneeId       Int?
   comments         Comment[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt

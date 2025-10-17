@@ -36,8 +36,7 @@ export default function ProjectOverview() {
   // Compute status (example logic)
   const status = (() => {
     const overdueTasks = project.tasks?.filter(
-      (t: any) =>
-        new Date(t.dueDate) < new Date() && t.status !== "done"
+      (t: any) => new Date(t.dueDate) < new Date() && t.status !== "done"
     ).length;
     if (!overdueTasks) return "On Track";
     if (overdueTasks === 1) return "At Risk";
@@ -50,7 +49,7 @@ export default function ProjectOverview() {
       <div className="max-w-5xl mx-auto">
         <button
           onClick={() => router.push("/dashboard")}
-          className="text-blue-600 hover:underline text-sm mb-4 inline-flex items-center"
+          className="mb-4 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-md shadow-sm transition"
         >
           ← Back to Dashboard
         </button>
