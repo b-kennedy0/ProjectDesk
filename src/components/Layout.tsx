@@ -36,9 +36,14 @@ export default function Layout({
               Dashboard
             </Link>
             {session?.user?.role === "SUPERVISOR" && (
-              <Link href="/assistance" className="text-sm hover:underline">
-                Student Support Hub
-              </Link>
+              <>
+                <Link href="/assistance" className="text-sm hover:underline">
+                  Student Support Hub
+                </Link>
+                <Link href="/supervisor/task-library" className="text-sm hover:underline">
+                  Task Library
+                </Link>
+              </>
             )}
             <Link href="/notifications" className="relative">
               <BellIcon className="h-5 w-5 text-gray-700 hover:text-blue-600 transition" />

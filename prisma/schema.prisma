@@ -8,10 +8,10 @@ generator client {
 }
 
 model User {
-  id           Int     @id @default(autoincrement())
+  id           Int      @id @default(autoincrement())
   name         String?
-  email        String  @unique
-  role         UserRole  @default(STUDENT)
+  email        String   @unique
+  role         UserRole @default(STUDENT)
   supervisorId Int?
   passwordHash String? // used only for local Credentials auth (nullable for SSO users)
 
@@ -27,6 +27,7 @@ model User {
   receivedNotifications Notification[]  @relation("RecipientNotifications")
   assignedTasks         Task[]          @relation("TaskAssignee")
   multiAssignedTasks    Task[]          @relation("TaskAssignments")
+  taskSets              TaskSet[]
 }
 
 model Project {
@@ -51,7 +52,7 @@ model Project {
   notifications Notification[]
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
-  status       String   @default("On Track")
+  status        String          @default("On Track")
 }
 
 model ProjectMember {
@@ -123,4 +124,26 @@ enum UserRole {
   STUDENT
   COLLABORATOR
   ADMIN
+}
+
+model TaskSet {
+  id           Int            @id @default(autoincrement())
+  name         String
+  description  String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  supervisor   User           @relation(fields: [supervisorId], references: [id])
+  supervisorId Int
+  templates    TaskTemplate[] @relation("TaskSetTemplates")
+}
+
+model TaskTemplate {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String?
+  dueOffset   Int? // Days after project start
+  order       Int? // Optional sequence for bulk application
+  createdAt   DateTime @default(now())
+  taskSet     TaskSet  @relation("TaskSetTemplates", fields: [taskSetId], references: [id])
+  taskSetId   Int
 }

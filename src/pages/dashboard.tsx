@@ -20,7 +20,7 @@ export default function Dashboard() {
 
   if (!data) return <Layout title="Dashboard"><p>Loading…</p></Layout>;
 
-  const projects = Array.isArray(data?.projects) ? data.projects : [];
+  const projects = Array.isArray(data) ? data : [];
   const activeProjects = projects.filter((p: any) => !p.isCompleted);
   const completedProjects = projects.filter((p: any) => p.isCompleted);
 

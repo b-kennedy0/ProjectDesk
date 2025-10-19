@@ -5,10 +5,14 @@ import useSWR from "swr";
 import { useState } from "react";
 import { toast, Toaster } from "react-hot-toast";
 import TaskFormModal from "@/components/TaskFormModal";
+import { useSession } from "next-auth/react";
 
 export default function ProjectTasks() {
   const router = useRouter();
   const { id } = router.query;
+
+  const { data: session } = useSession();
+  const userRole = session?.user?.role;
 
   const [isModalOpen, setModalOpen] = useState(false);
 
@@ -142,6 +146,28 @@ export default function ProjectTasks() {
                     >
                       {task.flagged ? "Unflag Item" : "🚩 Flag for Support"}
                     </button>
+                    {userRole === "SUPERVISOR" && (
+                      <button
+                        onClick={async () => {
+                          if (!confirm("Are you sure you want to delete this task?")) return;
+                          try {
+                            const res = await fetch(`/api/tasks/${task.id}`, {
+                              method: "DELETE",
+                            });
+                            if (!res.ok) throw new Error("Failed to delete task");
+                            toast.success("Task deleted successfully");
+                            mutate();
+                          } catch (err) {
+                            console.error(err);
+                            toast.error("Error deleting task");
+                          }
+                        }}
+                        className="ml-2 text-gray-500 hover:text-red-600 transition"
+                        title="Delete Task"
+                      >
+                        🗑️
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>

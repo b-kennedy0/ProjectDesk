@@ -1,0 +1,203 @@
+import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { useRouter } from "next/router";
+import toast from "react-hot-toast";
+import Layout from "@/components/Layout";
+import TaskSetModal from "@/components/TaskSetModal";
+import ApplyTaskSetModal from "@/components/ApplyTaskSetModal";
+import useSWR from "swr";
+
+export default function TaskLibrary() {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [showTaskSetModal, setShowTaskSetModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [selectedTaskSet, setSelectedTaskSet] = useState<any | null>(null);
+  // State to track which Task Set is being edited
+  const [editingId, setEditingId] = useState<string | null>(null);
+  // State to track the temporary name during editing
+  const [editName, setEditName] = useState<string>("");
+  const fetcher = (url: string) => fetch(url).then((r) => r.json());
+  const { data, error, mutate } = useSWR("/api/tasksets", fetcher);
+  console.log("Task sets:", data, "Error:", error);
+
+  // Supervisor access check
+  if (!session || session.user.role !== "SUPERVISOR") {
+    return (
+      <Layout title="Access Denied">
+        <p className="p-6 text-red-600">Access denied.</p>
+      </Layout>
+    );
+  }
+
+  // Function to handle saving the renamed Task Set
+  const saveRename = async (id: string) => {
+    if (!editName.trim()) {
+      toast.error("Name cannot be empty.");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/tasksets/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to update Task Set name.");
+      }
+      toast.success("Task Set renamed successfully.");
+      setEditingId(null);
+      setEditName("");
+      mutate(); // Refresh the list
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  return (
+    <Layout title="Task Library">
+      <div className="max-w-5xl mx-auto p-6 space-y-6 text-gray-700">
+        {/* Page intro */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
+          <h1 className="text-2xl font-semibold mb-2">Task Library</h1>
+          <p>
+            This is the Task Library. Here you can create template sets of tasks that can be bulk applied to a project.
+            For example, you might create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would
+            contain a different series of tasks than a <em>Postgraduate Qualitative Project</em> Task Set.
+          </p>
+        </div>
+
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Your Task Sets</h2>
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            onClick={() => setShowTaskSetModal(true)}
+          >
+            + Create New Task Set
+          </button>
+        </div>
+
+        {/* Task set list */}
+        <div className="border rounded-lg p-4 bg-white shadow-sm">
+          {!data && !error ? (
+            <p>Loading...</p>
+          ) : error ? (
+            <p>Could not load task sets.</p>
+          ) : data.length === 0 ? (
+            <p>No task sets yet. Create one to get started.</p>
+          ) : (
+            <ul className="divide-y">
+              {data.map((ts) => (
+                <li key={ts.id} className="flex justify-between items-center py-3">
+                  <div className="flex items-center gap-2">
+                    {editingId === ts.id ? (
+                      <>
+                        {/* Inline input field for renaming */}
+                        <input
+                          type="text"
+                          className="border rounded px-2 py-1 text-gray-700"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          autoFocus
+                        />
+                        {/* Save button */}
+                        <button
+                          className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
+                          onClick={() => saveRename(ts.id)}
+                        >
+                          Save
+                        </button>
+                        {/* Cancel button */}
+                        <button
+                          className="bg-gray-300 text-gray-800 px-2 py-1 rounded hover:bg-gray-400 transition"
+                          onClick={() => {
+                            setEditingId(null);
+                            setEditName("");
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Pencil icon to trigger renaming */}
+                        <button
+                          className="text-gray-500 hover:text-gray-700 transition flex items-center"
+                          aria-label={`Rename ${ts.name}`}
+                          onClick={() => {
+                            setEditingId(ts.id);
+                            setEditName(ts.name);
+                          }}
+                          type="button"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                            stroke="currentColor"
+                            className="w-5 h-5"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M16.862 3.487a2.125 2.125 0 012.998 2.998L7.5 18.846l-4 1 1-4 12.362-12.359z"
+                            />
+                          </svg>
+                        </button>
+                        {/* Display Task Set name */}
+                        <span className="font-medium">{ts.name}</span>
+                        {/* Number of tasks */}
+                        <span className="ml-2 text-sm text-gray-500">{ts.templates?.length || 0} tasks</span>
+                      </>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 transition"
+                      onClick={() => router.push(`/supervisor/task-sets/${ts.id}`)}
+                    >
+                      View & Edit
+                    </button>
+                    <button
+                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+                      onClick={() => {
+                        setSelectedTaskSet(ts);
+                        setShowApplyModal(true);
+                      }}
+                    >
+                      Apply to Project
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Modals */}
+        <TaskSetModal
+          isOpen={showTaskSetModal}
+          onClose={() => setShowTaskSetModal(false)}
+          mutate={mutate}
+          onCreated={() => {
+            setShowTaskSetModal(false);
+            mutate();
+          }}
+        />
+        {/* Use `open` prop to correctly pass a boolean to the modal dialog */}
+        <ApplyTaskSetModal
+          open={showApplyModal}
+          taskSet={selectedTaskSet}
+          onClose={() => {
+            setShowApplyModal(false);
+            setSelectedTaskSet(null);
+          }}
+        />
+      </div>
+    </Layout>
+  );
+}

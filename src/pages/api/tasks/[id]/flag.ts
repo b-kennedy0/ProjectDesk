@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { updateProjectStatus } from "@/lib/updateProjectStatus";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -35,10 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       data: { flagged: !wasFlagged },
     });
 
-    import { updateProjectStatus } from "@/lib/updateProjectStatus";
-
-// ...
-await updateProjectStatus(updatedTask.projectId);
+    await updateProjectStatus(updatedTask.projectId);
 
     // ✅ Only create a notification when newly flagged
     if (!wasFlagged) {

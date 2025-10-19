@@ -57,15 +57,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const projects = await prisma.project.findMany({
       where,
       include: {
-        students: true,
-        collaborators: true,
-        supervisor: true,
-        tasks: true,
+        supervisor: {
+          select: { id: true, name: true, email: true },
+        },
+        students: {
+          select: { id: true, name: true, email: true },
+        },
+        collaborators: {
+          select: { id: true, name: true, email: true },
+        },
+        tasks: {
+          select: { id: true, title: true, dueDate: true, status: true },
+        },
       },
       orderBy: [{ endDate: "asc" }, { title: "asc" }],
     });
 
-    return res.status(200).json({ projects }); // ✅ Return as object for consistency
+    if (!projects || !Array.isArray(projects)) {
+      return res.status(200).json([]);
+    }
+
+    return res.status(200).json(projects);
   } catch (error) {
     console.error("Error fetching projects:", error);
     return res.status(500).json({ error: "Internal Server Error" });

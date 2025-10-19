@@ -123,5 +123,27 @@ export default async function handler(
     }
   }
 
-  return res.setHeader("Allow", ["GET", "PUT", "POST"]).status(405).end(`Method ${method} Not Allowed`);
+  if (method === "DELETE") {
+    const taskId = Number(id);
+
+    if (isNaN(taskId)) {
+      return res.status(400).json({ error: "Invalid task ID" });
+    }
+
+    if (session.user.role !== "SUPERVISOR") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    try {
+      await prisma.task.delete({
+        where: { id: taskId },
+      });
+      return res.status(200).json({ message: "Task deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      return res.status(500).json({ error: "Failed to delete task" });
+    }
+  }
+
+  return res.setHeader("Allow", ["GET", "PUT", "POST", "DELETE"]).status(405).end(`Method ${method} Not Allowed`);
 }
