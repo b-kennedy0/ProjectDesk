@@ -6,6 +6,7 @@ import { useState } from "react";
 import { toast, Toaster } from "react-hot-toast";
 import TaskFormModal from "@/components/TaskFormModal";
 import { useSession } from "next-auth/react";
+import StatusPill from "@/components/StatusPill";
 
 export default function ProjectTasks() {
   const router = useRouter();
@@ -102,22 +103,7 @@ export default function ProjectTasks() {
                       )}
                     </div>
 
-<span
-  onClick={() => router.push(`/tasks/${task.id}`)}
-  className={`cursor-pointer px-2 py-1 rounded text-xs font-medium ${
-    task.status === "done"
-      ? "bg-green-100 text-green-700"
-      : task.status === "in_progress"
-      ? "bg-blue-100 text-blue-700"
-      : "bg-gray-100 text-gray-700"
-  }`}
->
-  {task.status === "done"
-    ? "Done"
-    : task.status === "in_progress"
-    ? "In Progress"
-    : "To Do"}
-</span>
+                    <StatusPill status={task.status} />
 
                     <button
                       className={`text-sm ${

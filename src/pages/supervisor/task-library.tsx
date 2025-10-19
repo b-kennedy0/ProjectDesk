@@ -1,7 +1,7 @@
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/router";
-import toast from "react-hot-toast";
+import { toast } from "react-hot-toast";
 import Layout from "@/components/Layout";
 import TaskSetModal from "@/components/TaskSetModal";
 import ApplyTaskSetModal from "@/components/ApplyTaskSetModal";
@@ -63,8 +63,8 @@ export default function TaskLibrary() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
           <h1 className="text-2xl font-semibold mb-2">Task Library</h1>
           <p>
-            This is the Task Library. Here you can create template sets of tasks that can be bulk applied to a project.
-            For example, you might create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would
+            Here you can create template sets of tasks that can be bulk applied to a project.
+            <br />For example, you might create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would
             contain a different series of tasks than a <em>Postgraduate Qualitative Project</em> Task Set.
           </p>
         </div>
@@ -121,38 +121,40 @@ export default function TaskLibrary() {
                         </button>
                       </>
                     ) : (
-                      <>
-                        {/* Pencil icon to trigger renaming */}
-                        <button
-                          className="text-gray-500 hover:text-gray-700 transition flex items-center"
-                          aria-label={`Rename ${ts.name}`}
-                          onClick={() => {
-                            setEditingId(ts.id);
-                            setEditName(ts.name);
-                          }}
-                          type="button"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth={2}
-                            stroke="currentColor"
-                            className="w-5 h-5"
-                            aria-hidden="true"
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-2">
+                          {/* Pencil icon to trigger renaming */}
+                          <button
+                            className="text-gray-500 hover:text-gray-700 transition flex items-center"
+                            aria-label={`Rename ${ts.name}`}
+                            onClick={() => {
+                              setEditingId(ts.id);
+                              setEditName(ts.name);
+                            }}
+                            type="button"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M16.862 3.487a2.125 2.125 0 012.998 2.998L7.5 18.846l-4 1 1-4 12.362-12.359z"
-                            />
-                          </svg>
-                        </button>
-                        {/* Display Task Set name */}
-                        <span className="font-medium">{ts.name}</span>
-                        {/* Number of tasks */}
-                        <span className="ml-2 text-sm text-gray-500">{ts.templates?.length || 0} tasks</span>
-                      </>
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-5 h-5"
+                              aria-hidden="true"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M16.862 3.487a2.125 2.125 0 012.998 2.998L7.5 18.846l-4 1 1-4 12.362-12.359z"
+                              />
+                            </svg>
+                          </button>
+                          {/* Display Task Set name */}
+                          <span className="font-medium">{ts.name}</span>
+                          {/* Number of tasks */}
+                          <span className="ml-2 text-sm text-gray-500">{ts.templates?.length || 0} tasks</span>
+                        </div>
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -170,6 +172,27 @@ export default function TaskLibrary() {
                       }}
                     >
                       Apply to Project
+                    </button>
+                    <button
+                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                      onClick={async () => {
+                        if (confirm(`Are you sure you want to delete "${ts.name}"?`)) {
+                          try {
+                            const res = await fetch(`/api/tasksets/${ts.id}`, { method: "DELETE" });
+                            if (!res.ok) throw new Error("Failed to delete task set");
+
+                            // ✅ Refresh data first
+                            await mutate();
+
+                            // ✅ Then show toast (after component re-render)
+                            toast.success("Task Set deleted successfully.");
+                          } catch (error) {
+                            toast.error("Error deleting Task Set.");
+                          }
+                        }
+                      }}
+                    >
+                      Delete
                     </button>
                   </div>
                 </li>

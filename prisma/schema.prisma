@@ -129,7 +129,6 @@ enum UserRole {
 model TaskSet {
   id           Int            @id @default(autoincrement())
   name         String
-  description  String?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   supervisor   User           @relation(fields: [supervisorId], references: [id])

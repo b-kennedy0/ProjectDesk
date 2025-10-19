@@ -4,14 +4,13 @@ import { toast } from "react-hot-toast";
 
 export default function TaskSetModal({ isOpen, onClose, mutate }: any) {
   const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const res = await fetch("/api/tasksets", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ name }),
     });
 
     if (res.ok) {
@@ -35,14 +34,6 @@ export default function TaskSetModal({ isOpen, onClose, mutate }: any) {
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium">Description</label>
-            <textarea
-              className="border rounded w-full px-3 py-2"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
             />
           </div>
           <div className="flex justify-end space-x-2">

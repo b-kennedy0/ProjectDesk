@@ -4,6 +4,7 @@ import Layout from "@/components/Layout";
 import { toast, Toaster } from "react-hot-toast";
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -11,6 +12,13 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const statusMap: Record<string, { label: string; color: string }> = {
   todo: { label: "To Do", color: "bg-gray-200 text-gray-800" },
   in_progress: { label: "In Progress", color: "bg-blue-200 text-blue-800" },
+  behind_schedule: {
+    label: "Behind Schedule",
+    color: "bg-orange-200 text-orange-800",
+  },
+  blocked: { label: "Blocked", color: "bg-red-200 text-red-800" },
+  review: { label: "Review", color: "bg-purple-200 text-purple-800" },
+  deferred: { label: "Deferred", color: "bg-yellow-200 text-yellow-800" },
   done: { label: "Done", color: "bg-green-200 text-green-800" },
 };
 
@@ -47,7 +55,9 @@ function Breadcrumbs({ project, task }: { project?: any; task?: any }) {
         <li>
           <span className="mx-1">/</span>
         </li>
-        <li className="text-gray-900 font-medium">{task ? task.title : "Task"}</li>
+        <li className="text-gray-900 font-medium">
+          {task ? task.title : "Task"}
+        </li>
       </ol>
     </nav>
   );
@@ -68,19 +78,26 @@ function StatusPill({ status }: { status: string }) {
 function formatDateTime(dt?: string) {
   if (!dt) return "N/A";
   const d = new Date(dt);
-  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
 }
 
 export default function TaskDetail() {
   const router = useRouter();
   const { id } = router.query;
-  const { data, error, mutate } = useSWR(id ? `/api/tasks/${id}` : null, fetcher);
+  const { data, error, mutate } = useSWR(
+    id ? `/api/tasks/${id}` : null,
+    fetcher
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusSelect, setStatusSelect] = useState("");
+  const [showStatusInfo, setShowStatusInfo] = useState(false);
 
   useEffect(() => {
     if (data?.task?.status) {
@@ -88,8 +105,18 @@ export default function TaskDetail() {
     }
   }, [data]);
 
-  if (error) return <Layout title="Task"><p>Error loading task.</p></Layout>;
-  if (!data) return <Layout title="Task"><p>Loading task...</p></Layout>;
+  if (error)
+    return (
+      <Layout title="Task">
+        <p>Error loading task.</p>
+      </Layout>
+    );
+  if (!data)
+    return (
+      <Layout title="Task">
+        <p>Loading task...</p>
+      </Layout>
+    );
 
   const task = data.task;
   const project = data.project || task.project || null;
@@ -141,7 +168,8 @@ export default function TaskDetail() {
 
   // Placeholder: assigned users list
   function AssignedUsers({ users }: { users: any[] }) {
-    if (!users?.length) return <span className="text-gray-500">Unassigned</span>;
+    if (!users?.length)
+      return <span className="text-gray-500">Unassigned</span>;
     return (
       <ul className="space-y-1">
         {users.map((u) => (
@@ -206,10 +234,23 @@ export default function TaskDetail() {
               >
                 <option value="todo">To Do</option>
                 <option value="in_progress">In Progress</option>
+                <option value="behind_schedule">Behind Schedule</option>
+                <option value="blocked">Blocked</option>
+                <option value="review">Review</option>
+                <option value="deferred">Deferred</option>
                 <option value="done">Done</option>
               </select>
+              <button
+                onClick={() => setShowStatusInfo(true)}
+                className="text-gray-400 hover:text-gray-600"
+                title="View status descriptions"
+              >
+                <QuestionMarkCircleIcon className="w-5 h-5" />
+              </button>
               {statusUpdating && (
-                <span className="ml-1 text-xs text-gray-400 animate-pulse">Saving...</span>
+                <span className="ml-1 text-xs text-gray-400 animate-pulse">
+                  Saving...
+                </span>
               )}
             </div>
           </div>
@@ -218,19 +259,31 @@ export default function TaskDetail() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-xs uppercase text-gray-400 mb-1">Assigned To</label>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Assigned To
+            </label>
             <AssignedUsers users={assignedUsers} />
           </div>
           <div>
-            <label className="block text-xs uppercase text-gray-400 mb-1">Due Date</label>
-            <span>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "N/A"}</span>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Due Date
+            </label>
+            <span>
+              {task.dueDate
+                ? new Date(task.dueDate).toLocaleDateString()
+                : "N/A"}
+            </span>
           </div>
           <div>
-            <label className="block text-xs uppercase text-gray-400 mb-1">Created</label>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Created
+            </label>
             <span>{formatDateTime(task.createdAt)}</span>
           </div>
           <div>
-            <label className="block text-xs uppercase text-gray-400 mb-1">Last Updated</label>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Last Updated
+            </label>
             <span>{formatDateTime(task.updatedAt)}</span>
           </div>
         </div>
@@ -275,38 +328,54 @@ export default function TaskDetail() {
               <h2 className="text-xl font-semibold mb-4">Edit Task</h2>
               <form onSubmit={handleEditSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1">Title</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Title
+                  </label>
                   <input
                     className="w-full border rounded px-2 py-1"
                     value={editForm.title}
-                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, title: e.target.value })
+                    }
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Description
+                  </label>
                   <textarea
                     className="w-full border rounded px-2 py-1"
                     rows={3}
                     value={editForm.description}
-                    onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, description: e.target.value })
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Due Date</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Due Date
+                  </label>
                   <input
                     type="date"
                     className="w-full border rounded px-2 py-1"
                     value={editForm.dueDate}
-                    onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, dueDate: e.target.value })
+                    }
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Status</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Status
+                  </label>
                   <select
                     className="w-full border rounded px-2 py-1"
                     value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, status: e.target.value })
+                    }
                   >
                     <option value="todo">To Do</option>
                     <option value="in_progress">In Progress</option>
@@ -314,10 +383,14 @@ export default function TaskDetail() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Assign Users</label>
+                  <label className="block text-sm font-medium mb-1">
+                    Assign Users
+                  </label>
                   <div className="border rounded px-2 py-2 space-y-2 max-h-40 overflow-y-auto">
                     {allUsers.length === 0 && (
-                      <span className="text-gray-500 text-sm">No users available.</span>
+                      <span className="text-gray-500 text-sm">
+                        No users available.
+                      </span>
                     )}
                     {allUsers.map((u: any) => {
                       const checked = editForm.assignedUserIds.includes(u.id);
@@ -333,7 +406,9 @@ export default function TaskDetail() {
                             onChange={() => {
                               setEditForm((prev: any) => {
                                 const ids = prev.assignedUserIds.includes(u.id)
-                                  ? prev.assignedUserIds.filter((id: any) => id !== u.id)
+                                  ? prev.assignedUserIds.filter(
+                                      (id: any) => id !== u.id
+                                    )
                                   : [...prev.assignedUserIds, u.id];
                                 return { ...prev, assignedUserIds: ids };
                               });
@@ -341,7 +416,9 @@ export default function TaskDetail() {
                           />
                           <span>
                             <span className="font-medium">{u.name}</span>{" "}
-                            <span className="text-xs text-gray-500">&lt;{u.email}&gt;</span>
+                            <span className="text-xs text-gray-500">
+                              &lt;{u.email}&gt;
+                            </span>
                           </span>
                         </label>
                       );
@@ -369,6 +446,30 @@ export default function TaskDetail() {
             </div>
           </div>
         )}
+        {showStatusInfo && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+    <div className="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+      <h2 className="text-lg font-semibold mb-4">Task Status Guide</h2>
+      <ul className="space-y-2 text-sm">
+        <li><span className="inline-block px-2 py-1 rounded bg-gray-200 text-gray-800 mr-2">To Do</span> Not started yet</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-blue-200 text-blue-800 mr-2">In Progress</span> Work has begun</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-orange-200 text-orange-800 mr-2">Behind Schedule</span> Missed due date, still active</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-red-200 text-red-800 mr-2">Blocked</span> Waiting on another task/input</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-purple-200 text-purple-800 mr-2">Review</span> Done but awaiting feedback</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-yellow-200 text-yellow-800 mr-2">Deferred</span> Paused or postponed</li>
+        <li><span className="inline-block px-2 py-1 rounded bg-green-200 text-green-800 mr-2">Done</span> Fully completed</li>
+      </ul>
+      <div className="flex justify-end mt-4">
+        <button
+          onClick={() => setShowStatusInfo(false)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+)}
         <Toaster position="bottom-right" />
       </div>
     </Layout>
@@ -464,15 +565,25 @@ function CommentsSection({ taskId }: { taskId: string | number }) {
       {/* Comments list */}
       {!commentsLoading && !commentsError && (
         <>
-          {(!Array.isArray(commentsData) && !commentsData?.comments?.length) ? (
+          {!Array.isArray(commentsData) && !commentsData?.comments?.length ? (
             <div className="text-gray-400 text-sm mb-4">No comments yet.</div>
           ) : (
             <ul className="space-y-4 mb-4">
-              {(Array.isArray(commentsData) ? commentsData : commentsData?.comments)?.map((c: any) => (
-                <li key={c.id} className="bg-white p-3 rounded shadow-sm border">
+              {(Array.isArray(commentsData)
+                ? commentsData
+                : commentsData?.comments
+              )?.map((c: any) => (
+                <li
+                  key={c.id}
+                  className="bg-white p-3 rounded shadow-sm border"
+                >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-gray-800">{c.user?.name || "Unknown"}</span>
-                    <span className="text-xs text-gray-500">{formatDateTime(c.createdAt)}</span>
+                    <span className="font-medium text-gray-800">
+                      {c.user?.name || "Unknown"}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {formatDateTime(c.createdAt)}
+                    </span>
                   </div>
                   {/* Inline editing form or comment content */}
                   {editingId === c.id ? (
@@ -499,26 +610,28 @@ function CommentsSection({ taskId }: { taskId: string | number }) {
                       </div>
                     </div>
                   ) : (
-                    <div className="text-gray-700 whitespace-pre-wrap">{c.content}</div>
+                    <div className="text-gray-700 whitespace-pre-wrap">
+                      {c.content}
+                    </div>
                   )}
                   {/* Edit/Delete buttons if not editing */}
                   {editingId !== c.id &&
-                    (Number(session?.user?.id) === Number(c.user?.id)) && (
-                    <div className="flex gap-2 mt-1 text-xs">
-                      <button
-                        onClick={() => startEditing(c.id, c.content)}
-                        className="text-blue-500 hover:underline"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => deleteComment(c.id)}
-                        className="text-red-500 hover:underline"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  )}
+                    Number(session?.user?.id) === Number(c.user?.id) && (
+                      <div className="flex gap-2 mt-1 text-xs">
+                        <button
+                          onClick={() => startEditing(c.id, c.content)}
+                          className="text-blue-500 hover:underline"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteComment(c.id)}
+                          className="text-red-500 hover:underline"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                 </li>
               ))}
             </ul>
