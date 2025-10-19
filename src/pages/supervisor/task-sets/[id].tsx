@@ -156,7 +156,7 @@ export default function TaskSetDetails() {
                           setEditFields((f) => ({ ...f, dueOffset: e.target.value }))
                         }
                         className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Due Offset (days)"
+                        placeholder="Due Offset (days after project start) (optional)"
                       />
                       <div className="flex gap-2">
                         <button
@@ -323,7 +323,7 @@ export default function TaskSetDetails() {
           />
           <input
             type="number"
-            placeholder="Due Offset (days)"
+            placeholder="Due Offset (days after project start) (optional)"
             value={newTemplate.dueOffset}
             onChange={(e) => setNewTemplate({ ...newTemplate, dueOffset: e.target.value })}
             className="border rounded px-3 py-2 w-full mb-2"
