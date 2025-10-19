@@ -3,6 +3,7 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { toast, Toaster } from "react-hot-toast";
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -261,12 +262,10 @@ export default function TaskDetail() {
           </button>
         </div>
 
-        {/* Comments placeholder */}
+        {/* Comments section */}
         <div className="mt-8">
           <h2 className="text-lg font-semibold mb-2">Comments</h2>
-          <div className="bg-gray-50 border rounded p-4 text-gray-500">
-            Discussion feature coming soon!
-          </div>
+          <CommentsSection taskId={task.id} />
         </div>
 
         {/* Edit Modal */}
@@ -373,5 +372,180 @@ export default function TaskDetail() {
         <Toaster position="bottom-right" />
       </div>
     </Layout>
+  );
+}
+// CommentsSection component
+import React from "react";
+
+function CommentsSection({ taskId }: { taskId: string | number }) {
+  // Fetch comments using SWR
+  const {
+    data: commentsData,
+    error: commentsError,
+    isLoading: commentsLoading,
+    mutate: mutateComments,
+  } = useSWR(taskId ? `/api/tasks/${taskId}/comments` : null, fetcher);
+
+  const [commentContent, setCommentContent] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  // New state for editing and deleting comments
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingContent, setEditingContent] = useState("");
+
+  const { data: session } = useSession();
+
+  function startEditing(id: number, content: string) {
+    setEditingId(id);
+    setEditingContent(content);
+  }
+
+  async function saveEdit(id: number) {
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, content: editingContent }),
+      });
+      if (!res.ok) throw new Error();
+      setEditingId(null);
+      toast.success("Comment updated");
+      await mutateComments();
+    } catch {
+      toast.error("Failed to update comment");
+    }
+  }
+
+  async function deleteComment(id: number) {
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Comment deleted");
+      await mutateComments();
+    } catch {
+      toast.error("Failed to delete comment");
+    }
+  }
+
+  async function addComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!commentContent.trim()) return;
+    setPosting(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentContent }),
+      });
+      if (!res.ok) throw new Error();
+      setCommentContent("");
+      await mutateComments();
+      toast.success("Comment posted");
+    } catch {
+      toast.error("Failed to post comment");
+    }
+    setPosting(false);
+  }
+
+  return (
+    <div className="bg-gray-50 border rounded p-4">
+      {/* Loading/Error states */}
+      {commentsLoading && (
+        <div className="text-gray-400 text-sm">Loading comments...</div>
+      )}
+      {commentsError && (
+        <div className="text-red-500 text-sm">Failed to load comments.</div>
+      )}
+      {/* Comments list */}
+      {!commentsLoading && !commentsError && (
+        <>
+          {(!Array.isArray(commentsData) && !commentsData?.comments?.length) ? (
+            <div className="text-gray-400 text-sm mb-4">No comments yet.</div>
+          ) : (
+            <ul className="space-y-4 mb-4">
+              {(Array.isArray(commentsData) ? commentsData : commentsData?.comments)?.map((c: any) => (
+                <li key={c.id} className="bg-white p-3 rounded shadow-sm border">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-gray-800">{c.user?.name || "Unknown"}</span>
+                    <span className="text-xs text-gray-500">{formatDateTime(c.createdAt)}</span>
+                  </div>
+                  {/* Inline editing form or comment content */}
+                  {editingId === c.id ? (
+                    <div className="flex flex-col gap-2">
+                      <textarea
+                        className="w-full border rounded px-2 py-1 text-sm"
+                        rows={2}
+                        value={editingContent}
+                        onChange={(e) => setEditingContent(e.target.value)}
+                      />
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="text-xs text-gray-500 hover:underline"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => saveEdit(c.id)}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-gray-700 whitespace-pre-wrap">{c.content}</div>
+                  )}
+                  {/* Edit/Delete buttons if not editing */}
+                  {editingId !== c.id &&
+                    (Number(session?.user?.id) === Number(c.user?.id)) && (
+                    <div className="flex gap-2 mt-1 text-xs">
+                      <button
+                        onClick={() => startEditing(c.id, c.content)}
+                        className="text-blue-500 hover:underline"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deleteComment(c.id)}
+                        className="text-red-500 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Add comment form */}
+          <form onSubmit={addComment} className="flex flex-col gap-2">
+            <textarea
+              className="w-full border rounded px-2 py-1 resize-y"
+              rows={2}
+              placeholder="Write a comment..."
+              value={commentContent}
+              onChange={(e) => setCommentContent(e.target.value)}
+              disabled={posting}
+              required
+            />
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="px-4 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
+                disabled={posting || !commentContent.trim()}
+              >
+                {posting ? "Posting..." : "Post Comment"}
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </div>
   );
 }

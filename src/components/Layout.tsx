@@ -35,9 +35,11 @@ export default function Layout({
             <Link href="/dashboard" className="text-sm hover:underline">
               Dashboard
             </Link>
-            <Link href="/assistance" className="text-sm hover:underline">
-              Assistance
-            </Link>
+            {session?.user?.role === "SUPERVISOR" && (
+              <Link href="/assistance" className="text-sm hover:underline">
+                Student Support Hub
+              </Link>
+            )}
             <Link href="/notifications" className="relative">
               <BellIcon className="h-5 w-5 text-gray-700 hover:text-blue-600 transition" />
               {unreadCount > 0 && (
