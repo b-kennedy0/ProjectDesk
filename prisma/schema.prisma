@@ -26,6 +26,7 @@ model User {
   sentNotifications     Notification[]  @relation("ActorNotifications")
   receivedNotifications Notification[]  @relation("RecipientNotifications")
   assignedTasks         Task[]          @relation("TaskAssignee")
+  multiAssignedTasks    Task[]          @relation("TaskAssignments")
 }
 
 model Project {
@@ -77,6 +78,7 @@ model Task {
   flagged          Boolean        @default(false)
   assignee         User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
   assigneeId       Int?
+  assignedUsers    User[]         @relation("TaskAssignments")
   comments         Comment[]
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt

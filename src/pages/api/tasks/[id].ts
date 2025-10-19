@@ -7,7 +7,17 @@ import { prisma } from "@/lib/prisma";
 async function getTaskById(taskId: string) {
   return prisma.task.findUnique({
     where: { id: Number(taskId) },
-    include: { project: true, assignee: true },
+    include: {
+      project: {
+        include: {
+          students: true,
+          collaborators: true,
+          supervisor: true,
+        },
+      },
+      assignee: true,
+      assignedUsers: true,
+    },
   });
 }
 
@@ -49,13 +59,14 @@ export default async function handler(
     const updated = await prisma.task.update({
       where: { id: Number(id) },
       data: { status: newStatus },
+      include: { assignedUsers: true },
     });
     return res.status(200).json({ task: updated });
   }
 
   if (method === "POST") {
-    // Toggle flag/unflag
-    const { unflag } = body;
+    // Toggle flag/unflag or update assigned users
+    const { unflag, assignedUserIds } = body;
     const task = await prisma.task.findUnique({ where: { id: Number(id) } });
     if (!task) {
       return res.status(404).json({ error: "Task not found" });
@@ -65,6 +76,7 @@ export default async function handler(
       const updated = await prisma.task.update({
         where: { id: Number(id) },
         data: { flagged: false },
+        include: { assignedUsers: true },
       });
       await prisma.notification.deleteMany({
         where: {
@@ -73,11 +85,25 @@ export default async function handler(
         },
       });
       return res.status(200).json({ task: updated, message: "Task unflagged" });
+    } else if (assignedUserIds) {
+      // Update assigned users
+      const updated = await prisma.task.update({
+        where: { id: Number(id) },
+        data: {
+          assignedUsers: {
+            set: [],
+            connect: assignedUserIds.map((userId: string) => ({ id: userId })),
+          },
+        },
+        include: { assignedUsers: true },
+      });
+      return res.status(200).json({ task: updated, message: "Assigned users updated" });
     } else {
       // Flag: set flagged=true, create notification
       const updated = await prisma.task.update({
         where: { id: Number(id) },
         data: { flagged: true },
+        include: { assignedUsers: true },
       });
       // Actor's name
       const actorName = session.user?.name || session.user?.email || "Someone";

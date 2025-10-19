@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     // Only supervisors can create tasks for now
     if (!requireRole('supervisor', userRole)) return res.status(403).json({ error: 'Forbidden' });
-    const { projectId, title, description, dueDate, dependencyTaskId } = req.body;
+    const { projectId, title, description, dueDate, dependencyTaskId, assignedUserIds } = req.body;
     if (!projectId || !title) return res.status(400).json({ error: 'Missing fields' });
 
     const task = await prisma.task.create({
@@ -36,6 +36,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         description,
         dueDate: dueDate ? new Date(dueDate) : null,
         dependencyTaskId: dependencyTaskId ?? null,
+        assignedUsers: Array.isArray(assignedUserIds) && assignedUserIds.length > 0
+          ? { connect: assignedUserIds.map((id: number) => ({ id })) }
+          : undefined,
       },
     });
     await updateProjectStatus(task.projectId);
@@ -43,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PATCH') {
-    const { id, flagged, status, dueDate, dependencyTaskId } = req.body;
+    const { id, flagged, status, dueDate, dependencyTaskId, assignedUserIds } = req.body;
     if (!id) return res.status(400).json({ error: 'Task id required' });
 
     const before = await prisma.task.findUnique({ where: { id: Number(id) }, include: { project: true } });
@@ -56,6 +59,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         status: status ?? undefined,
         dueDate: typeof dueDate === 'string' ? new Date(dueDate) : undefined,
         dependencyTaskId: dependencyTaskId === undefined ? undefined : dependencyTaskId,
+        assignedUsers: {
+          set: [],
+          ...(Array.isArray(assignedUserIds) && assignedUserIds.length > 0
+            ? { connect: assignedUserIds.map((userId: number) => ({ id: userId })) }
+            : {}),
+        },
       },
     });
 

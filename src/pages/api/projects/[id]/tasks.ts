@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       case "POST": {
-        const { title, description, dueDate } = req.body;
+        const { title, description, dueDate, assignedUserIds } = req.body;
         if (!title) return res.status(400).json({ error: "Title is required" });
 
         const newTask = await prisma.task.create({
@@ -32,6 +32,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             description,
             dueDate: dueDate ? new Date(dueDate) : null,
             projectId,
+            assignedUsers: assignedUserIds?.length
+              ? {
+                  connect: assignedUserIds.map((userId: string) => ({
+                    id: Number(userId),
+                  })),
+                }
+              : undefined,
           },
         });
 
