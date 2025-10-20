@@ -3,6 +3,7 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
+import { GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   DndContext,
@@ -26,11 +27,11 @@ export default function TaskSetDetails() {
     id ? `/api/tasksets/${id}/templates` : null,
     fetcher
   );
-  const [newTemplate, setNewTemplate] = useState({ title: "", description: "", dueOffset: "" });
+  const [newTemplate, setNewTemplate] = useState({ title: "", description: "", dueOffset: "", duration: "" });
   // State to track which template is being edited
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   // State to hold editable fields for the template being edited
-  const [editFields, setEditFields] = useState<{ title: string; description: string; dueOffset: string }>({ title: "", description: "", dueOffset: "" });
+  const [editFields, setEditFields] = useState<{ title: string; description: string; dueOffset: string; duration: string }>({ title: "", description: "", dueOffset: "", duration: "" });
   // Local state for ordering
   const [localOrder, setLocalOrder] = useState<string[]>([]);
 
@@ -72,9 +73,9 @@ export default function TaskSetDetails() {
     });
 
     if (res.ok) {
+      await mutate(); // refresh task list immediately
       toast.success("Task added");
-      setNewTemplate({ title: "", description: "", dueOffset: "" });
-      mutate();
+      setNewTemplate({ title: "", description: "", dueOffset: "", duration: "" });
     } else {
       const err = await res.json();
       toast.error(err.error || "Error adding task");
@@ -101,6 +102,7 @@ export default function TaskSetDetails() {
           title: editFields.title,
           description: editFields.description,
           dueOffset: editFields.dueOffset ? Number(editFields.dueOffset) : null,
+          duration: editFields.duration ? Number(editFields.duration) : null,
         }),
       });
 
@@ -193,7 +195,7 @@ export default function TaskSetDetails() {
     .filter((t): t is typeof templates[0] => !!t);
 
   // SortableItem component
-  function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+  function SortableItem({ id, children, handle }: { id: string; children: React.ReactNode; handle: React.ReactNode }) {
     const {
       attributes,
       listeners,
@@ -203,11 +205,10 @@ export default function TaskSetDetails() {
       isDragging,
     } = useSortable({ id });
 
-    const style = {
+    const cardStyle = {
       transform: CSS.Transform.toString(transform),
       transition,
       zIndex: isDragging ? 999 : undefined,
-      cursor: 'grab',
       backgroundColor: isDragging ? '#f0f0f0' : undefined,
       position: 'relative',
     };
@@ -215,12 +216,30 @@ export default function TaskSetDetails() {
     return (
       <li
         ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
+        style={cardStyle}
         data-id={id}
-        className="py-3 flex flex-col gap-2 border-b bg-white"
+        className={`rounded-lg shadow-sm border bg-white px-3 py-2 relative`}
       >
+        {/* Drag handle in top-right */}
+        <div className="absolute top-2 right-2">
+          <span
+            {...listeners}
+            {...attributes}
+            className={`p-1 rounded cursor-grab hover:bg-gray-100 active:cursor-grabbing`}
+            style={{
+              cursor: isDragging ? 'grabbing' : 'grab',
+              backgroundColor: isDragging ? '#e5e7eb' : undefined,
+              transition: 'background 0.1s',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            tabIndex={0}
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={18} />
+          </span>
+        </div>
         {children}
       </li>
     );
@@ -236,12 +255,14 @@ export default function TaskSetDetails() {
           ← Back to Task Library
         </button>
 
-        <h1 className="text-2xl font-semibold">Tasks in this Set</h1>
+        <h1 className="text-2xl font-semibold">
+          Tasks in this Set{data && !Array.isArray(data) && data.name ? ` (${data.name})` : ""}
+        </h1>
         <h3 className="text-gray-600 mb-4">Drag and drop to reorder tasks</h3>
 
         <div className="space-y-3">
           {(!templates || templates.length === 0) && (
-            <p>No templates yet. Add one below.</p>
+            <p>No tasks yet. Add one below.</p>
           )}
 
           {templates.length > 0 && (
@@ -252,12 +273,19 @@ export default function TaskSetDetails() {
               onDragCancel={() => {}}
             >
               <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
-                <ul className="divide-y divide-gray-200">
+                <ul className="space-y-3">
                   {orderedTemplates.map((t) => (
-                    <SortableItem key={String(t.id)} id={String(t.id)}>
-                      {/* If editing this template, show input fields */}
+                    <SortableItem
+                      key={String(t.id)}
+                      id={String(t.id)}
+                      handle={
+                        // This prop is not used, but kept for possible future handle refactor
+                        <GripVertical />
+                      }
+                    >
+                      {/* Card layout */}
                       {editingTemplateId === t.id ? (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <input
                             type="text"
                             value={editFields.title}
@@ -284,7 +312,16 @@ export default function TaskSetDetails() {
                             className="border rounded px-3 py-2 w-full mb-1"
                             placeholder="Due Offset (days after project start) (optional)"
                           />
-                          <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={editFields.duration}
+                            onChange={(e) =>
+                              setEditFields((f) => ({ ...f, duration: e.target.value }))
+                            }
+                            className="border rounded px-3 py-2 w-full mb-1"
+                            placeholder="Duration (days) (optional)"
+                          />
+                          <div className="flex gap-2 justify-end mt-2">
                             <button
                               onClick={() => handleUpdateTemplate(t.id)}
                               className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
@@ -300,36 +337,47 @@ export default function TaskSetDetails() {
                           </div>
                         </div>
                       ) : (
-                        // Normal display mode
-                        <div className="flex flex-col gap-1">
-                          <div className="font-medium">{t.title}</div>
-                          {t.description && (
-                            <div className="text-sm text-gray-600">{t.description}</div>
-                          )}
-                          {t.dueOffset && (
-                            <div className="text-xs text-gray-400">
-                              Due {t.dueOffset} days after project start
+                        <div className="flex flex-col min-h-[64px]">
+                          <div className="flex-1">
+                            <div className="font-medium text-base">{t.title}</div>
+                            {t.description && (
+                              <div className="text-sm text-gray-600">{t.description}</div>
+                            )}
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
+                              {t.dueOffset && (
+                                <div className="text-xs text-gray-400">
+                                  Due {t.dueOffset} days after project start
+                                </div>
+                              )}
+                              {t.duration && (
+                                <div className="text-xs text-gray-400">
+                                  Duration: {t.duration} days
+                                </div>
+                              )}
                             </div>
-                          )}
-                          <div className="flex gap-2 mt-2">
-                            {/* Edit button: enables edit mode and sets current values */}
+                          </div>
+                          <div className="flex justify-end gap-3 mt-2">
                             <button
+                              type="button"
                               onClick={() => {
                                 setEditingTemplateId(t.id);
                                 setEditFields({
                                   title: t.title || "",
                                   description: t.description || "",
                                   dueOffset: t.dueOffset ? String(t.dueOffset) : "",
+                                  duration: t.duration ? String(t.duration) : "",
                                 });
                               }}
-                              className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                              className="text-xs text-blue-600 hover:underline bg-transparent px-0 py-0 font-normal"
+                              style={{ minWidth: 0, minHeight: 0 }}
                             >
                               Edit
                             </button>
-                            {/* Delete button: prompts confirmation and deletes */}
                             <button
+                              type="button"
                               onClick={() => handleDeleteTemplate(t.id)}
-                              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                              className="text-xs text-red-600 hover:underline bg-transparent px-0 py-0 font-normal"
+                              style={{ minWidth: 0, minHeight: 0 }}
                             >
                               Delete
                             </button>
@@ -364,6 +412,13 @@ export default function TaskSetDetails() {
             placeholder="Due Offset (days after project start) (optional)"
             value={newTemplate.dueOffset}
             onChange={(e) => setNewTemplate({ ...newTemplate, dueOffset: e.target.value })}
+            className="border rounded px-3 py-2 w-full mb-2"
+          />
+          <input
+            type="number"
+            placeholder="Duration (days) (optional)"
+            value={newTemplate.duration}
+            onChange={(e) => setNewTemplate({ ...newTemplate, duration: e.target.value })}
             className="border rounded px-3 py-2 w-full mb-2"
           />
           <button

@@ -37,24 +37,66 @@ export default function GanttPage() {
     );
   }
 
+  // Enhanced getTaskColor for overdue and long-duration tasks
+  function getEnhancedTaskColor(t: any, end: Date, durationDays: number) {
+    const today = new Date();
+    // Overdue: dueDate exists and is before today
+    if (t.dueDate && new Date(t.dueDate) < today) return "red";
+    // Long duration: duration > 30 days
+    if (durationDays > 30) return "orange";
+    if (t.flagged) return "red";
+    if (t.status === "done") return "green";
+    if (t.status === "in_progress") return "blue";
+    if (t.status === "todo") return "gray";
+    return "gray";
+  }
+
   const ganttTasks: Task[] = tasks
-    .filter((t: any) => t.dueDate)
-    .map((t: any) => ({
-    id: String(t.id),
-    name: t.title,
-    start: t.dueDate
-      ? new Date(new Date(t.dueDate).getTime() - 7 * 24 * 60 * 60 * 1000)
-      : new Date(),
-    end: t.dueDate ? new Date(t.dueDate) : new Date(),
-    progress: t.status === "done" ? 100 : t.status === "in_progress" ? 50 : 0,
-    dependencies: t.dependencyTaskId ? [String(t.dependencyTaskId)] : [],
-    type: "task",
-    styles: { 
-      progressColor: getTaskColor(t), 
-      backgroundColor: getTaskColor(t), 
-      backgroundSelectedColor: getTaskColor(t) 
-    }
-  }));
+    .map((t: any) => {
+      // Determine duration in days
+      let duration = t.duration;
+      if (typeof duration !== "number" || duration <= 0) duration = 7;
+      // Improved logic: prefer startDate if available
+      let start: Date;
+      let end: Date;
+
+      if (t.startDate) {
+        start = new Date(t.startDate);
+        if (t.dueDate) {
+          end = new Date(t.dueDate);
+        } else {
+          end = new Date(start);
+          end.setDate(start.getDate() + duration);
+        }
+      } else {
+        if (t.dueDate) {
+          end = new Date(t.dueDate);
+          start = new Date(end);
+          start.setDate(end.getDate() - duration);
+        } else {
+          end = new Date();
+          start = new Date();
+          start.setDate(end.getDate() - duration);
+        }
+      }
+      // Calculate durationDays for color logic
+      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const color = getEnhancedTaskColor(t, end, durationDays);
+      return {
+        id: String(t.id),
+        name: t.title,
+        start,
+        end,
+        progress: t.status === "done" ? 100 : t.status === "in_progress" ? 50 : 0,
+        dependencies: t.dependencyTaskId ? [String(t.dependencyTaskId)] : [],
+        type: "task",
+        styles: {
+          progressColor: color,
+          backgroundColor: color,
+          backgroundSelectedColor: color
+        }
+      };
+    });
 
   const GanttComponent = dynamic(() =>
     import("gantt-task-react").then((mod) => mod.Gantt)

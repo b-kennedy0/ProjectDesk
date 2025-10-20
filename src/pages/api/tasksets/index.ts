@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       case "POST": {
-        const { name, description, templates } = req.body;
+        const { name, templates } = req.body;
 
         if (!name) {
           return res.status(400).json({ error: "Name is required" });
@@ -36,7 +36,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const newTaskSet = await prisma.taskSet.create({
           data: {
             name,
-            description: description || "",
             supervisorId,
             templates: templates
               ? {

@@ -88,10 +88,10 @@ export default function TaskLibrary() {
           ) : data.length === 0 ? (
             <p>No task sets yet. Create one to get started.</p>
           ) : (
-            <ul className="divide-y">
+            <ul className="divide-y divide-gray-200">
               {data.map((ts) => (
-                <li key={ts.id} className="flex justify-between items-center py-3">
-                  <div className="flex items-center gap-2">
+                <li key={ts.id} className="flex justify-between items-center py-4">
+                  <div className="flex items-center gap-3">
                     {editingId === ts.id ? (
                       <>
                         {/* Inline input field for renaming */}
@@ -104,14 +104,14 @@ export default function TaskLibrary() {
                         />
                         {/* Save button */}
                         <button
-                          className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-700 transition"
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition text-sm"
                           onClick={() => saveRename(ts.id)}
                         >
                           Save
                         </button>
                         {/* Cancel button */}
                         <button
-                          className="bg-gray-300 text-gray-800 px-2 py-1 rounded hover:bg-gray-400 transition"
+                          className="bg-gray-300 text-gray-800 px-3 py-1 rounded hover:bg-gray-400 transition text-sm"
                           onClick={() => {
                             setEditingId(null);
                             setEditName("");
@@ -122,7 +122,7 @@ export default function TaskLibrary() {
                       </>
                     ) : (
                       <div className="flex flex-col">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {/* Pencil icon to trigger renaming */}
                           <button
                             className="text-gray-500 hover:text-gray-700 transition flex items-center"
@@ -150,22 +150,22 @@ export default function TaskLibrary() {
                             </svg>
                           </button>
                           {/* Display Task Set name */}
-                          <span className="font-medium">{ts.name}</span>
+                          <span className="font-semibold">{ts.name}</span>
                           {/* Number of tasks */}
-                          <span className="ml-2 text-sm text-gray-500">{ts.templates?.length || 0} tasks</span>
+                          <span className="ml-2 text-sm text-gray-600">{ts.templates?.length || 0} tasks</span>
                         </div>
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-3">
                     <button
-                      className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 transition"
+                      className="bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 transition text-sm"
                       onClick={() => router.push(`/supervisor/task-sets/${ts.id}`)}
                     >
-                      View & Edit
+                      View &amp; Edit
                     </button>
                     <button
-                      className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
+                      className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition text-sm"
                       onClick={() => {
                         setSelectedTaskSet(ts);
                         setShowApplyModal(true);
@@ -174,7 +174,24 @@ export default function TaskLibrary() {
                       Apply to Project
                     </button>
                     <button
-                      className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                      className="bg-gray-100 text-gray-800 px-4 py-2 rounded hover:bg-gray-200 transition text-sm"
+                      onClick={async () => {
+                        if (confirm(`Duplicate "${ts.name}"?`)) {
+                          try {
+                            const res = await fetch(`/api/tasksets/${ts.id}/duplicate`, { method: "POST" });
+                            if (!res.ok) throw new Error("Failed to duplicate Task Set");
+                            toast.success("Task Set duplicated successfully.");
+                            mutate();
+                          } catch (error) {
+                            toast.error("Failed to duplicate Task Set.");
+                          }
+                        }
+                      }}
+                    >
+                      Duplicate
+                    </button>
+                    <button
+                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition text-sm"
                       onClick={async () => {
                         if (confirm(`Are you sure you want to delete "${ts.name}"?`)) {
                           try {

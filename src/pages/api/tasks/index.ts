@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === 'POST') {
     // Only supervisors can create tasks for now
     if (!requireRole('supervisor', userRole)) return res.status(403).json({ error: 'Forbidden' });
-    const { projectId, title, description, dueDate, dependencyTaskId, assignedUserIds } = req.body;
+    const { projectId, title, description, dueDate, dependencyTaskId, assignedUserIds, duration } = req.body;
     if (!projectId || !title) return res.status(400).json({ error: 'Missing fields' });
 
     const task = await prisma.task.create({
@@ -36,6 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         description,
         dueDate: dueDate ? new Date(dueDate) : null,
         dependencyTaskId: dependencyTaskId ?? null,
+        duration: duration ? Number(duration) : null,
         assignedUsers: Array.isArray(assignedUserIds) && assignedUserIds.length > 0
           ? { connect: assignedUserIds.map((id: number) => ({ id })) }
           : undefined,
@@ -46,19 +47,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'PATCH') {
-    const { id, flagged, status, dueDate, dependencyTaskId, assignedUserIds } = req.body;
+    const { id, flagged, status, dueDate, dependencyTaskId, assignedUserIds, duration } = req.body;
     if (!id) return res.status(400).json({ error: 'Task id required' });
 
     const before = await prisma.task.findUnique({ where: { id: Number(id) }, include: { project: true } });
     if (!before) return res.status(404).json({ error: 'Not found' });
 
+    // Normalize status to match Prisma enum
+    const normalizedStatus = status
+      ? String(status).toUpperCase().replace(/\s+/g, '_')
+      : undefined;
+
     const updated = await prisma.task.update({
       where: { id: Number(id) },
       data: {
         flagged: typeof flagged === 'boolean' ? flagged : undefined,
-        status: status ?? undefined,
+        status: normalizedStatus ?? undefined,
         dueDate: typeof dueDate === 'string' ? new Date(dueDate) : undefined,
         dependencyTaskId: dependencyTaskId === undefined ? undefined : dependencyTaskId,
+        duration: duration ? Number(duration) : undefined,
         assignedUsers: {
           set: [],
           ...(Array.isArray(assignedUserIds) && assignedUserIds.length > 0

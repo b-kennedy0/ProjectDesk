@@ -73,10 +73,12 @@ model Task {
   projectId        Int
   title            String
   description      String?
-  status           String         @default("todo") // 'todo' | 'in_progress' | 'done'
+  startDate        DateTime?
   dueDate          DateTime?
+  status           TaskStatus     @default(TODO) // 'todo' | 'in_progress' | 'done'
   dependencyTaskId Int?
   flagged          Boolean        @default(false)
+  duration        Int?
   assignee         User?          @relation("TaskAssignee", fields: [assigneeId], references: [id])
   assigneeId       Int?
   assignedUsers    User[]         @relation("TaskAssignments")
@@ -90,7 +92,7 @@ model Task {
 
 model Comment {
   id        Int      @id @default(autoincrement())
-  task      Task     @relation(fields: [taskId], references: [id])
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    Int
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
@@ -102,7 +104,7 @@ model Notification {
   id        Int     @id @default(autoincrement())
   project   Project @relation(fields: [projectId], references: [id])
   projectId Int
-  task      Task?   @relation(fields: [taskId], references: [id])
+  task      Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    Int?
 
   actor       User @relation("ActorNotifications", fields: [actorId], references: [id])
@@ -141,8 +143,18 @@ model TaskTemplate {
   title       String
   description String?
   dueOffset   Int? // Days after project start
+  duration    Int?
   order       Int? // Optional sequence for bulk application
   createdAt   DateTime @default(now())
-  taskSet     TaskSet  @relation("TaskSetTemplates", fields: [taskSetId], references: [id])
+  taskSet     TaskSet   @relation("TaskSetTemplates", fields: [taskSetId], references: [id], onDelete: Cascade)
   taskSetId   Int
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BEHIND_SCHEDULE
+  AT_RISK
+  COMPLETE
+  BLOCKED
 }

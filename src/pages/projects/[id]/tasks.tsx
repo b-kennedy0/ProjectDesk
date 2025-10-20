@@ -72,10 +72,7 @@ export default function ProjectTasks() {
                         : "border-gray-200"
                     }`}
                   >
-                    <div
-                      onClick={() => router.push(`/tasks/${task.id}`)}
-                      className="cursor-pointer"
-                    >
+                    <div className="flex-1 cursor-pointer" onClick={() => router.push(`/tasks/${task.id}`)}>
                       <p className="font-medium text-gray-900">{task.title}</p>
                       <p className="text-sm text-gray-500">
                         {task.description}
@@ -103,57 +100,61 @@ export default function ProjectTasks() {
                       )}
                     </div>
 
-                    <StatusPill status={task.status} />
+                    <div className="flex justify-center items-center w-32">
+                      <StatusPill status={task.status} />
+                    </div>
 
-                    <button
-                      className={`text-sm ${
-                        task.flagged
-                          ? "text-gray-600 hover:text-gray-800"
-                          : "text-red-600 hover:text-red-800"
-                      }`}
-                      onClick={async () => {
-                        try {
-                          const res = await fetch(
-                            `/api/tasks/${task.id}/flag`,
-                            { method: "POST" }
-                          );
-                          if (!res.ok) throw new Error("Failed to flag task");
-                          toast.success(
-                            task.flagged
-                              ? "Task unflagged."
-                              : "Task flagged for support!"
-                          );
-                          mutate();
-                        } catch (err) {
-                          console.error(err);
-                          toast.error("Error flagging task");
-                        }
-                      }}
-                    >
-                      {task.flagged ? "Unflag Item" : "🚩 Flag for Support"}
-                    </button>
-                    {userRole === "SUPERVISOR" && (
+                    <div className="flex flex-col items-end space-y-2 text-sm">
                       <button
+                        className={`${
+                          task.flagged
+                            ? "text-gray-600 hover:text-gray-800"
+                            : "text-red-600 hover:text-red-800"
+                        }`}
                         onClick={async () => {
-                          if (!confirm("Are you sure you want to delete this task?")) return;
                           try {
-                            const res = await fetch(`/api/tasks/${task.id}`, {
-                              method: "DELETE",
-                            });
-                            if (!res.ok) throw new Error("Failed to delete task");
-                            toast.success("Task deleted successfully");
+                            const res = await fetch(
+                              `/api/tasks/${task.id}/flag`,
+                              { method: "POST" }
+                            );
+                            if (!res.ok) throw new Error("Failed to flag task");
+                            toast.success(
+                              task.flagged
+                                ? "Task unflagged."
+                                : "Task flagged for support!"
+                            );
                             mutate();
                           } catch (err) {
                             console.error(err);
-                            toast.error("Error deleting task");
+                            toast.error("Error flagging task");
                           }
                         }}
-                        className="ml-2 text-gray-500 hover:text-red-600 transition"
-                        title="Delete Task"
                       >
-                        🗑️
+                        {task.flagged ? "Unflag Item" : "🚩 Flag for Support"}
                       </button>
-                    )}
+                      {userRole === "SUPERVISOR" && (
+                        <button
+                          onClick={async () => {
+                            if (!confirm("Are you sure you want to delete this task?")) return;
+                            try {
+                              const res = await fetch(`/api/tasks/${task.id}`, {
+                                method: "DELETE",
+                              });
+                              if (!res.ok) throw new Error("Failed to delete task");
+                              toast.success("Task deleted successfully");
+                              mutate();
+                            } catch (err) {
+                              console.error(err);
+                              toast.error("Error deleting task");
+                            }
+                          }}
+                          className="text-gray-500 hover:text-red-600 transition"
+                          title="Delete Task"
+                        >
+                          🗑️
+                        </button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>

@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // POST: Create a new template inside this Task Set
     if (req.method === "POST") {
-      const { title, description, dueOffset, order } = req.body;
+      const { title, description, dueOffset, order, duration } = req.body;
 
       if (!title) {
         return res.status(400).json({ error: "Title is required" });
@@ -39,6 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title,
           description: description || null,
           dueOffset: dueOffset ? Number(dueOffset) : null,
+          duration: duration ? Number(duration) : null,
           order: order ? Number(order) : null,
           taskSetId,
         },
@@ -49,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // PUT: Update a task template
     if (req.method === "PUT") {
-      const { templateId, title, description, dueOffset, order } = req.body;
+      const { templateId, title, description, dueOffset, order, duration } = req.body;
 
       if (!templateId) {
         return res.status(400).json({ error: "Template ID is required" });
@@ -61,6 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           title,
           description: description || null,
           dueOffset: dueOffset ? Number(dueOffset) : null,
+          duration: duration ? Number(duration) : null,
           order: order ? Number(order) : null,
         },
       });

@@ -49,19 +49,47 @@ export default async function handler(
     return res.status(200).json({ task });
   }
 
-  if (method === "PUT") {
-    // Toggle completion status
-    const task = await prisma.task.findUnique({ where: { id: Number(id) } });
-    if (!task) {
-      return res.status(404).json({ error: "Task not found" });
+  if (req.method === "PATCH" || req.method === "PUT") {
+    const { id: bodyId, title, description, status, dueDate, startDate, duration } = req.body;
+
+    const taskIdToUse = bodyId || id;
+
+    if (!taskIdToUse) {
+      return res.status(400).json({ error: "Task ID is required for update." });
     }
-    const newStatus = task.status === "done" ? "pending" : "done";
-    const updated = await prisma.task.update({
-      where: { id: Number(id) },
-      data: { status: newStatus },
-      include: { assignedUsers: true },
-    });
-    return res.status(200).json({ task: updated });
+
+    // Normalize status to match Prisma enum
+    const normalizedStatus = status
+      ? status.toUpperCase().replace(/\s+/g, "_")
+      : undefined;
+
+    try {
+      const parsedStart = startDate ? new Date(startDate) : undefined;
+      const parsedDue = dueDate ? new Date(dueDate) : undefined;
+
+      let autoDuration: number | undefined = duration ? Number(duration) : undefined;
+      if (parsedStart && parsedDue) {
+        const diff = Math.ceil((parsedDue.getTime() - parsedStart.getTime()) / (1000 * 60 * 60 * 24));
+        autoDuration = diff >= 0 ? diff : 0;
+      }
+
+      const updated = await prisma.task.update({
+        where: { id: Number(taskIdToUse) },
+        data: {
+          title,
+          description,
+          dueDate: parsedDue,
+          startDate: parsedStart,
+          duration: autoDuration,
+          status: normalizedStatus,
+        },
+      });
+
+      return res.status(200).json(updated);
+    } catch (error: any) {
+      console.error("Task update error:", error.message || error);
+      return res.status(500).json({ error: "Failed to update task" });
+    }
   }
 
   if (method === "POST") {
@@ -108,13 +136,13 @@ export default async function handler(
       // Actor's name
       const actorName = session.user?.name || session.user?.email || "Someone";
       // Find assigned user to notify
-      const assignedToId = task.assignedToId;
-      if (assignedToId) {
+      const assigneeId = task.assigneeId;
+      if (assigneeId) {
         await prisma.notification.create({
           data: {
             type: "flag",
             message: `Task "${task.title}" was flagged by ${actorName}`,
-            userId: assignedToId,
+            userId: assigneeId,
             taskId: Number(id),
           },
         });

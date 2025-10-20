@@ -3,24 +3,12 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { toast, Toaster } from "react-hot-toast";
 import { useState, useEffect } from "react";
+import StatusPill from "@/components/StatusPill";
 import { useSession } from "next-auth/react";
 import { QuestionMarkCircleIcon } from "@heroicons/react/24/outline";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-// Helper: status label and color
-const statusMap: Record<string, { label: string; color: string }> = {
-  todo: { label: "To Do", color: "bg-gray-200 text-gray-800" },
-  in_progress: { label: "In Progress", color: "bg-blue-200 text-blue-800" },
-  behind_schedule: {
-    label: "Behind Schedule",
-    color: "bg-orange-200 text-orange-800",
-  },
-  blocked: { label: "Blocked", color: "bg-red-200 text-red-800" },
-  review: { label: "Review", color: "bg-purple-200 text-purple-800" },
-  deferred: { label: "Deferred", color: "bg-yellow-200 text-yellow-800" },
-  done: { label: "Done", color: "bg-green-200 text-green-800" },
-};
 
 function Breadcrumbs({ project, task }: { project?: any; task?: any }) {
   const router = useRouter();
@@ -63,17 +51,6 @@ function Breadcrumbs({ project, task }: { project?: any; task?: any }) {
   );
 }
 
-function StatusPill({ status }: { status: string }) {
-  const map = statusMap[status] || statusMap["todo"];
-  return (
-    <span
-      className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${map.color}`}
-      style={{ minWidth: 70, textAlign: "center" }}
-    >
-      {map.label}
-    </span>
-  );
-}
 
 function formatDateTime(dt?: string) {
   if (!dt) return "N/A";
@@ -101,7 +78,7 @@ export default function TaskDetail() {
 
   useEffect(() => {
     if (data?.task?.status) {
-      setStatusSelect(data.task.status);
+      setStatusSelect(data.task.status.toLowerCase());
     }
   }, [data]);
 
@@ -119,8 +96,16 @@ export default function TaskDetail() {
     );
 
   const task = data.task;
-  const project = data.project || task.project || null;
-  const assignedUsers = task.assignedUsers || [];
+  const project = data.project || task?.project || null;
+  const assignedUsers = task?.assignedUsers || [];
+
+  if (!task) {
+    return (
+      <Layout title="Task">
+        <p>Loading task details...</p>
+      </Layout>
+    );
+  }
 
   async function toggleComplete() {
     try {
@@ -138,6 +123,8 @@ export default function TaskDetail() {
       title: task.title,
       description: task.description,
       dueDate: task.dueDate ? task.dueDate.slice(0, 10) : "",
+      startDate: task.startDate ? task.startDate.slice(0, 10) : "",
+      duration: typeof task.duration !== "undefined" && task.duration !== null ? task.duration : "",
       status: task.status,
       assignedUserIds: assignedUsers.map((u: any) => u.id),
     });
@@ -148,18 +135,46 @@ export default function TaskDetail() {
     e.preventDefault();
     setEditSaving(true);
     try {
-      const res = await fetch(`/api/tasks`, {
-        method: "PATCH",
+      const start = editForm.startDate ? new Date(editForm.startDate) : null;
+      const end = editForm.dueDate ? new Date(editForm.dueDate) : null;
+
+      let duration = Number(editForm.duration);
+      let adjustedDue = end;
+
+      if (start && end) {
+        const dayDiff = Math.ceil(
+          (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        if (duration && duration !== dayDiff) {
+          const confirmAdjust = window.confirm(
+            "The entered duration doesn’t match the time between start and due date. Adjust dates to match this duration?"
+          );
+          if (confirmAdjust) {
+            adjustedDue = new Date(start);
+            adjustedDue.setDate(start.getDate() + duration);
+          }
+        } else {
+          duration = dayDiff;
+        }
+      }
+
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: task.id,
           ...editForm,
+          startDate: start ? start.toISOString() : null,
+          dueDate: adjustedDue ? adjustedDue.toISOString() : null,
+          duration,
         }),
       });
+
       if (!res.ok) throw new Error();
       toast.success("Task updated");
       setEditOpen(false);
-      mutate();
+      // Explicitly revalidate SWR for this task
+      await mutate(`/api/tasks/${task.id}`);
     } catch {
       toast.error("Failed to update task");
     }
@@ -193,7 +208,7 @@ export default function TaskDetail() {
 
   // Inline status update handler
   async function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    const newStatus = e.target.value;
+    const newStatus = e.target.value.toLowerCase();
     setStatusSelect(newStatus);
     setStatusUpdating(true);
     try {
@@ -203,17 +218,21 @@ export default function TaskDetail() {
         body: JSON.stringify({ id: task.id, status: newStatus }),
       });
       if (!res.ok) throw new Error();
+      const updated = await res.json();
+      // Update the local task.status so StatusPill reflects immediately
+      task.status = updated.status;
       toast.success("Status updated");
+      setStatusSelect(updated.status.toLowerCase());
       await mutate();
     } catch {
       toast.error("Failed to update status");
-      setStatusSelect(task.status); // revert selection
+      setStatusSelect(task.status.toLowerCase()); // revert selection in lowercase
     }
     setStatusUpdating(false);
   }
 
   return (
-    <Layout title={task.title}>
+    <Layout title={task?.title || "Task"}>
       <div className="max-w-2xl mx-auto bg-white p-6 rounded-md shadow">
         {/* Breadcrumb navigation */}
         <Breadcrumbs project={project} task={task} />
@@ -221,9 +240,9 @@ export default function TaskDetail() {
         {/* Enhanced task info */}
         <div className="flex flex-col gap-2 mb-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold">{task.title}</h1>
+            <h1 className="text-2xl font-semibold">{task?.title || "Untitled Task"}</h1>
             <div className="flex items-center gap-2">
-              <StatusPill status={task.status} />
+              <StatusPill status={task?.status} />
               <select
                 className="text-xs border rounded px-2 py-1 bg-gray-100 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-200 transition disabled:opacity-60"
                 style={{ minWidth: 90 }}
@@ -254,7 +273,7 @@ export default function TaskDetail() {
               )}
             </div>
           </div>
-          <p className="text-gray-700">{task.description}</p>
+          <p className="text-gray-700">{task?.description || "No description available."}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -269,8 +288,38 @@ export default function TaskDetail() {
               Due Date
             </label>
             <span>
-              {task.dueDate
+              {task?.dueDate
                 ? new Date(task.dueDate).toLocaleDateString()
+                : "N/A"}
+            </span>
+          </div>
+          <div>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Start Date
+            </label>
+            <span>
+              {
+                (() => {
+                  // Fallback: ensure startDate is a string (ISO) if backend returns Date object
+                  const normalizedStart = task?.startDate
+                    ? (typeof task.startDate === "string"
+                        ? task.startDate
+                        : new Date(task.startDate).toISOString())
+                    : null;
+                  return normalizedStart
+                    ? new Date(normalizedStart).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
+                    : "N/A";
+                })()
+              }
+            </span>
+          </div>
+          <div>
+            <label className="block text-xs uppercase text-gray-400 mb-1">
+              Duration (days)
+            </label>
+            <span>
+              {typeof task?.duration !== "undefined" && task?.duration !== null && task?.duration !== ""
+                ? task.duration
                 : "N/A"}
             </span>
           </div>
@@ -278,13 +327,13 @@ export default function TaskDetail() {
             <label className="block text-xs uppercase text-gray-400 mb-1">
               Created
             </label>
-            <span>{formatDateTime(task.createdAt)}</span>
+            <span>{formatDateTime(task?.createdAt)}</span>
           </div>
           <div>
             <label className="block text-xs uppercase text-gray-400 mb-1">
               Last Updated
             </label>
-            <span>{formatDateTime(task.updatedAt)}</span>
+            <span>{formatDateTime(task?.updatedAt)}</span>
           </div>
         </div>
 
@@ -293,13 +342,13 @@ export default function TaskDetail() {
           <button
             onClick={toggleComplete}
             className={`px-4 py-2 rounded-md transition ${
-              task.status === "done"
+              task?.status === "done"
                 ? "bg-gray-300 text-gray-700"
                 : "bg-green-600 text-white hover:bg-green-700"
             }`}
-            disabled={task.status === "done"}
+            disabled={task?.status === "done"}
           >
-            {task.status === "done" ? "Completed" : "Mark as Completed"}
+            {task?.status === "done" ? "Completed" : "Mark as Completed"}
           </button>
           <button
             onClick={openEdit}
@@ -308,7 +357,7 @@ export default function TaskDetail() {
             Edit Task
           </button>
           <button
-            onClick={() => router.push(`/projects/${task.projectId}/tasks`)}
+            onClick={() => router.push(`/projects/${task?.projectId}/tasks`)}
             className="px-4 py-2 border rounded-md bg-white hover:bg-gray-50"
           >
             Back to Tasks
@@ -318,7 +367,7 @@ export default function TaskDetail() {
         {/* Comments section */}
         <div className="mt-8">
           <h2 className="text-lg font-semibold mb-2">Comments</h2>
-          <CommentsSection taskId={task.id} />
+          <CommentsSection taskId={task?.id} />
         </div>
 
         {/* Edit Modal */}
@@ -355,6 +404,19 @@ export default function TaskDetail() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full border rounded px-2 py-1"
+                    value={editForm.startDate}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, startDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
                     Due Date
                   </label>
                   <input
@@ -363,6 +425,20 @@ export default function TaskDetail() {
                     value={editForm.dueDate}
                     onChange={(e) =>
                       setEditForm({ ...editForm, dueDate: e.target.value })
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Duration (days)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    className="w-full border rounded px-2 py-1"
+                    value={editForm.duration}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, duration: e.target.value })
                     }
                   />
                 </div>

@@ -20,13 +20,15 @@ export default function StatusPill({ status }: { status: string }) {
     done: "Done",
   };
 
+  const normalizedStatus = status?.toLowerCase().trim() || "unknown";
+
   return (
     <span
       className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
-        statusStyles[status] || "bg-gray-200 text-gray-800"
+        statusStyles[normalizedStatus] || "bg-gray-200 text-gray-800"
       }`}
     >
-      {labelMap[status] || "Unknown"}
+      {labelMap[normalizedStatus] || "Unknown"}
     </span>
   );
 }

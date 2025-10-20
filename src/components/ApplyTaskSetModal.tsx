@@ -24,6 +24,7 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
   const [loading, setLoading] = useState(false); // Track loading state for submission
   const [loadingProjects, setLoadingProjects] = useState(false); // Track loading state for projects fetch
   const [fetchError, setFetchError] = useState<string | null>(null); // Track fetch error message
+  const [showSuccess, setShowSuccess] = useState(false); // Track local success message display
 
   // Load all projects for the supervisor when modal opens
   useEffect(() => {
@@ -78,9 +79,11 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
       }
 
       toast.success("Task set successfully applied to the project!");
+      setShowSuccess(true);
       setTimeout(() => {
+        setShowSuccess(false);
         onClose();
-      }, 1200);
+      }, 1300);
     } catch (error: any) {
       console.error("Error applying task set:", error);
       const msg = error?.message || "An unexpected error occurred";
@@ -89,6 +92,8 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
       setLoading(false);
     }
   };
+
+  const selectedProjectTitle = projects.find(p => String(p.id) === selectedProject)?.title || "";
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -115,7 +120,7 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
               className="w-full border rounded p-2 mb-4"
-              disabled={loading} // Disable select while submitting
+              disabled={loading || showSuccess} // Disable select while submitting or showing success
             >
               <option value="">Select a project</option>
               {/* Safety guard: ensure projects is an array before mapping to prevent runtime errors if API returns non-array */}
@@ -128,18 +133,24 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
             </select>
           )}
 
+          {showSuccess && (
+            <p className="mb-4 text-green-600 font-semibold">
+              ✅ Task Set successfully applied to {selectedProjectTitle}
+            </p>
+          )}
+
           <div className="flex justify-end gap-2">
             <button
               onClick={onClose}
               className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
-              disabled={loading} // Disable cancel button while submitting to avoid conflicts
+              disabled={loading || showSuccess} // Disable cancel button while submitting or showing success to avoid conflicts
             >
               Cancel
             </button>
             <button
               onClick={handleApply}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || projects.length === 0}
+              disabled={loading || projects.length === 0 || showSuccess}
             >
               {loading ? "Applying..." : "Apply"}
             </button>
