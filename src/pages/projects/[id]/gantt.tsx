@@ -21,6 +21,7 @@ export default function GanttPage() {
   const { id } = router.query;
   const { data: tasks, mutate } = useSWR(id ? `/api/tasks?projectId=${id}` : null, fetcher);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.Week);
+  const [sortMode, setSortMode] = useState<"manual" | "start" | "due">("manual");
 
   if (!tasks) return <Layout title="Gantt"><p>Loading…</p></Layout>;
 
@@ -51,7 +52,13 @@ export default function GanttPage() {
     return "gray";
   }
 
-  const ganttTasks: Task[] = tasks
+  let sortedTasks = [...tasks];
+  if (sortMode === "start") {
+    sortedTasks.sort((a: any, b: any) => new Date(a.startDate || a.dueDate).getTime() - new Date(b.startDate || b.dueDate).getTime());
+  } else if (sortMode === "due") {
+    sortedTasks.sort((a: any, b: any) => new Date(a.dueDate || a.startDate).getTime() - new Date(b.dueDate || b.startDate).getTime());
+  }
+  const ganttTasks: Task[] = sortedTasks
     .map((t: any) => {
       // Determine duration in days
       let duration = t.duration;
@@ -80,7 +87,7 @@ export default function GanttPage() {
         }
       }
       // Calculate durationDays for color logic
-      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+      const durationDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       const color = getEnhancedTaskColor(t, end, durationDays);
       return {
         id: String(t.id),
@@ -128,6 +135,17 @@ export default function GanttPage() {
     mutate();
   };
 
+  function CustomTooltip({ task }: { task: Task }) {
+    const durationDays = Math.round((task.end.getTime() - task.start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    return (
+      <div className="p-2 bg-white border rounded shadow-md text-sm max-w-xs">
+        <div><strong>{task.name}</strong></div>
+        <div>Start: {task.start.toLocaleDateString()}</div>
+        <div>End: {task.end.toLocaleDateString()}</div>
+        <div>Duration: {durationDays} day{durationDays !== 1 ? 's' : ''}</div>
+      </div>
+    );
+  }
 
   return (
     <Layout title="Gantt Chart">
@@ -138,25 +156,48 @@ export default function GanttPage() {
         </a>
       </div>
 
-      <div className="mb-4 flex space-x-2">
-        <button
-          className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Day ? "bg-blue-500 text-white" : ""}`}
-          onClick={() => setViewMode(ViewMode.Day)}
-        >
-          Day
-        </button>
-        <button
-          className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Week ? "bg-blue-500 text-white" : ""}`}
-          onClick={() => setViewMode(ViewMode.Week)}
-        >
-          Week
-        </button>
-        <button
-          className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Month ? "bg-blue-500 text-white" : ""}`}
-          onClick={() => setViewMode(ViewMode.Month)}
-        >
-          Month
-        </button>
+      <div className="mb-4 flex justify-between items-center">
+        <div className="flex space-x-2">
+          <button
+            className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Day ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setViewMode(ViewMode.Day)}
+          >
+            Day
+          </button>
+          <button
+            className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Week ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setViewMode(ViewMode.Week)}
+          >
+            Week
+          </button>
+          <button
+            className={`px-3 py-1 rounded-md border ${viewMode === ViewMode.Month ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setViewMode(ViewMode.Month)}
+          >
+            Month
+          </button>
+        </div>
+
+        <div className="flex space-x-2">
+          <button
+            className={`px-3 py-1 rounded-md border ${sortMode === "manual" ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setSortMode("manual")}
+          >
+            Default Sort
+          </button>
+          <button
+            className={`px-3 py-1 rounded-md border ${sortMode === "start" ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setSortMode("start")}
+          >
+            Start Date
+          </button>
+          <button
+            className={`px-3 py-1 rounded-md border ${sortMode === "due" ? "bg-blue-500 text-white" : ""}`}
+            onClick={() => setSortMode("due")}
+          >
+            Due Date
+          </button>
+        </div>
       </div>
 
       <div className="overflow-auto border rounded-md p-2">
@@ -165,6 +206,7 @@ export default function GanttPage() {
     viewMode={viewMode}
     onDateChange={handleDateChange}
     onProgressChange={handleProgressChange}
+    TooltipContent={CustomTooltip}
   />
 </div>
     </Layout>

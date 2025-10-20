@@ -289,7 +289,7 @@ export default function TaskDetail() {
             </label>
             <span>
               {task?.dueDate
-                ? new Date(task.dueDate).toLocaleDateString()
+                ? new Date(task.dueDate).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })
                 : "N/A"}
             </span>
           </div>
