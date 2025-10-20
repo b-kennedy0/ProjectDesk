@@ -2,8 +2,20 @@ import { useRouter } from "next/router";
 import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
+import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 export default function TaskSetDetails() {
   const router = useRouter();
@@ -19,6 +31,24 @@ export default function TaskSetDetails() {
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   // State to hold editable fields for the template being edited
   const [editFields, setEditFields] = useState<{ title: string; description: string; dueOffset: string }>({ title: "", description: "", dueOffset: "" });
+  // Local state for ordering
+  const [localOrder, setLocalOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (data) {
+      const currentIds = Array.isArray(data)
+        ? data.map((t) => t.id)
+        : data.templates?.map((t) => t.id) || [];
+
+      // Only set once — when localOrder is empty
+      if (localOrder.length === 0) {
+        setLocalOrder(currentIds);
+      }
+    }
+  }, [data]);
+
+  useEffect(()=>{
+  }, [localOrder]);
 
   // Security check
   if (!session || session.user.role !== "SUPERVISOR") {
@@ -108,6 +138,94 @@ export default function TaskSetDetails() {
     }
   };
 
+  // Function to update task order on the server
+  const updateTaskOrder = async (newOrder: string[]) => {
+    try {
+      const payload = {
+        orderedTasks: newOrder.map((taskId, index) => ({
+          id: Number(taskId),
+          order: index,
+        })),
+      };
+
+      const res = await fetch(`/api/tasksets/${id}/reorder`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast.success("Task order updated");
+        await mutate(); // ensure SWR refetches latest data
+        const refreshed = await fetch(`/api/tasksets/${id}/templates`).then((r) => r.json());
+        const updatedTemplates = Array.isArray(refreshed)
+          ? refreshed
+          : refreshed.templates || [];
+        setLocalOrder(updatedTemplates.map((t: any) => String(t.id)));
+      } else {
+        const err = await res.json();
+        toast.error(err.error || "Error updating task order");
+      }
+    } catch (e) {
+      toast.error("Network error");
+    }
+  };
+
+  // Handle drag end event
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const oldIndex = localOrder.indexOf(active.id.toString());
+      const newIndex = localOrder.indexOf(over.id.toString());
+      const newOrder = arrayMove(localOrder, oldIndex, newIndex);
+      setLocalOrder(newOrder);
+      updateTaskOrder(newOrder);
+    }
+  };
+
+  // Get the list of templates based on data shape and sort by order
+  const templates = (Array.isArray(data) ? data : data.templates || []).sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0)
+  );
+
+  // Sort templates by localOrder, normalizing ID types
+  const orderedTemplates = localOrder
+    .map((id) => templates.find((t) => String(t.id) === String(id)))
+    .filter((t): t is typeof templates[0] => !!t);
+
+  // SortableItem component
+  function SortableItem({ id, children }: { id: string; children: React.ReactNode }) {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      zIndex: isDragging ? 999 : undefined,
+      cursor: 'grab',
+      backgroundColor: isDragging ? '#f0f0f0' : undefined,
+      position: 'relative',
+    };
+
+    return (
+      <li
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        data-id={id}
+        className="py-3 flex flex-col gap-2 border-b bg-white"
+      >
+        {children}
+      </li>
+    );
+  }
+
   return (
     <Layout title={`Task Set #${id}`}>
       <div className="max-w-4xl mx-auto p-6 space-y-6 text-gray-700">
@@ -119,190 +237,110 @@ export default function TaskSetDetails() {
         </button>
 
         <h1 className="text-2xl font-semibold">Tasks in this Set</h1>
+        <h3 className="text-gray-600 mb-4">Drag and drop to reorder tasks</h3>
 
         <div className="space-y-3">
-          {(!data || (Array.isArray(data) && data.length === 0)) && (
+          {(!templates || templates.length === 0) && (
             <p>No templates yet. Add one below.</p>
           )}
 
-          {Array.isArray(data) && data.length > 0 && (
-            <ul className="divide-y">
-              {data.map((t) => (
-                <li key={t.id} className="py-3 flex flex-col gap-2">
-                  {/* If editing this template, show input fields */}
-                  {editingTemplateId === t.id ? (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={editFields.title}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, title: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFields.description}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, description: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Description (optional)"
-                      />
-                      <input
-                        type="number"
-                        value={editFields.dueOffset}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, dueOffset: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Due Offset (days after project start) (optional)"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleUpdateTemplate(t.id)}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingTemplateId(null)}
-                          className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Normal display mode
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium">{t.title}</div>
-                      {t.description && (
-                        <div className="text-sm text-gray-600">{t.description}</div>
-                      )}
-                      {t.dueOffset && (
-                        <div className="text-xs text-gray-400">
-                          Due {t.dueOffset} days after project start
+          {templates.length > 0 && (
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+              onDragStart={(event) => {}}
+              onDragCancel={() => {}}
+            >
+              <SortableContext items={localOrder} strategy={verticalListSortingStrategy}>
+                <ul className="divide-y divide-gray-200">
+                  {orderedTemplates.map((t) => (
+                    <SortableItem key={String(t.id)} id={String(t.id)}>
+                      {/* If editing this template, show input fields */}
+                      {editingTemplateId === t.id ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editFields.title}
+                            onChange={(e) =>
+                              setEditFields((f) => ({ ...f, title: e.target.value }))
+                            }
+                            className="border rounded px-3 py-2 w-full mb-1"
+                            placeholder="Title"
+                          />
+                          <textarea
+                            value={editFields.description}
+                            onChange={(e) =>
+                              setEditFields((f) => ({ ...f, description: e.target.value }))
+                            }
+                            className="border rounded px-3 py-2 w-full mb-1"
+                            placeholder="Description (optional)"
+                          />
+                          <input
+                            type="number"
+                            value={editFields.dueOffset}
+                            onChange={(e) =>
+                              setEditFields((f) => ({ ...f, dueOffset: e.target.value }))
+                            }
+                            className="border rounded px-3 py-2 w-full mb-1"
+                            placeholder="Due Offset (days after project start) (optional)"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleUpdateTemplate(t.id)}
+                              className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingTemplateId(null)}
+                              className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        // Normal display mode
+                        <div className="flex flex-col gap-1">
+                          <div className="font-medium">{t.title}</div>
+                          {t.description && (
+                            <div className="text-sm text-gray-600">{t.description}</div>
+                          )}
+                          {t.dueOffset && (
+                            <div className="text-xs text-gray-400">
+                              Due {t.dueOffset} days after project start
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            {/* Edit button: enables edit mode and sets current values */}
+                            <button
+                              onClick={() => {
+                                setEditingTemplateId(t.id);
+                                setEditFields({
+                                  title: t.title || "",
+                                  description: t.description || "",
+                                  dueOffset: t.dueOffset ? String(t.dueOffset) : "",
+                                });
+                              }}
+                              className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
+                            >
+                              Edit
+                            </button>
+                            {/* Delete button: prompts confirmation and deletes */}
+                            <button
+                              onClick={() => handleDeleteTemplate(t.id)}
+                              className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                            >
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       )}
-                      <div className="flex gap-2 mt-2">
-                        {/* Edit button: enables edit mode and sets current values */}
-                        <button
-                          onClick={() => {
-                            setEditingTemplateId(t.id);
-                            setEditFields({
-                              title: t.title || "",
-                              description: t.description || "",
-                              dueOffset: t.dueOffset ? String(t.dueOffset) : "",
-                            });
-                          }}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                        >
-                          Edit
-                        </button>
-                        {/* Delete button: prompts confirmation and deletes */}
-                        <button
-                          onClick={() => handleDeleteTemplate(t.id)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-
-          {!Array.isArray(data) && data.templates && data.templates.length > 0 && (
-            <ul className="divide-y">
-              {data.templates.map((t) => (
-                <li key={t.id} className="py-3 flex flex-col gap-2">
-                  {/* If editing this template, show input fields */}
-                  {editingTemplateId === t.id ? (
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={editFields.title}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, title: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Title"
-                      />
-                      <textarea
-                        value={editFields.description}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, description: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Description (optional)"
-                      />
-                      <input
-                        type="number"
-                        value={editFields.dueOffset}
-                        onChange={(e) =>
-                          setEditFields((f) => ({ ...f, dueOffset: e.target.value }))
-                        }
-                        className="border rounded px-3 py-2 w-full mb-1"
-                        placeholder="Due Offset (days)"
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleUpdateTemplate(t.id)}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingTemplateId(null)}
-                          className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    // Normal display mode
-                    <div className="flex flex-col gap-1">
-                      <div className="font-medium">{t.title}</div>
-                      {t.description && (
-                        <div className="text-sm text-gray-600">{t.description}</div>
-                      )}
-                      {t.dueOffset && (
-                        <div className="text-xs text-gray-400">
-                          Due {t.dueOffset} days after project start
-                        </div>
-                      )}
-                      <div className="flex gap-2 mt-2">
-                        {/* Edit button: enables edit mode and sets current values */}
-                        <button
-                          onClick={() => {
-                            setEditingTemplateId(t.id);
-                            setEditFields({
-                              title: t.title || "",
-                              description: t.description || "",
-                              dueOffset: t.dueOffset ? String(t.dueOffset) : "",
-                            });
-                          }}
-                          className="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600"
-                        >
-                          Edit
-                        </button>
-                        {/* Delete button: prompts confirmation and deletes */}
-                        <button
-                          onClick={() => handleDeleteTemplate(t.id)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
+                    </SortableItem>
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 

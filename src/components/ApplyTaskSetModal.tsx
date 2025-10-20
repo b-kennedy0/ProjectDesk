@@ -24,8 +24,6 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
   const [loading, setLoading] = useState(false); // Track loading state for submission
   const [loadingProjects, setLoadingProjects] = useState(false); // Track loading state for projects fetch
   const [fetchError, setFetchError] = useState<string | null>(null); // Track fetch error message
-  const [success, setSuccess] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Load all projects for the supervisor when modal opens
   useEffect(() => {
@@ -64,8 +62,6 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
     }
 
     setLoading(true);
-    setErrorMsg(null);
-    setSuccess(false);
     try {
       const res = await fetch(`/api/tasksets/${taskSet.id}/apply`, {
         method: "POST",
@@ -77,18 +73,17 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
 
       if (!res.ok) {
         const msg = (data && (data.error || data.message)) || "Failed to apply task set";
-        setErrorMsg(msg);
         toast.error(msg);
         return;
       }
 
-      setSuccess(true);
       toast.success("Task set successfully applied to the project!");
-      // Do not auto-close; let the user read the confirmation and click Close
+      setTimeout(() => {
+        onClose();
+      }, 1200);
     } catch (error: any) {
       console.error("Error applying task set:", error);
       const msg = error?.message || "An unexpected error occurred";
-      setErrorMsg(msg);
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -103,17 +98,6 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
           <Dialog.Title className="text-lg font-semibold mb-4">
             Apply “{taskSet?.name || "Task Set"}” to Project
           </Dialog.Title>
-
-          {success && (
-            <div className="mb-3 rounded border border-green-200 bg-green-50 text-green-800 px-3 py-2 text-sm">
-              Task set applied successfully. You can close this dialog.
-            </div>
-          )}
-          {errorMsg && (
-            <div className="mb-3 rounded border border-red-200 bg-red-50 text-red-700 px-3 py-2 text-sm">
-              {errorMsg}
-            </div>
-          )}
 
           <label className="block mb-2 font-medium text-sm text-gray-700">
             Select Project
@@ -131,7 +115,7 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
               value={selectedProject}
               onChange={(e) => setSelectedProject(e.target.value)}
               className="w-full border rounded p-2 mb-4"
-              disabled={loading || success} // Disable select while submitting or after success
+              disabled={loading} // Disable select while submitting
             >
               <option value="">Select a project</option>
               {/* Safety guard: ensure projects is an array before mapping to prevent runtime errors if API returns non-array */}
@@ -155,9 +139,9 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
             <button
               onClick={handleApply}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={loading || projects.length === 0 || success}
+              disabled={loading || projects.length === 0}
             >
-              {success ? "Applied" : loading ? "Applying..." : "Apply"}
+              {loading ? "Applying..." : "Apply"}
             </button>
           </div>
         </Dialog.Panel>

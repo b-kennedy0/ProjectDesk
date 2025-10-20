@@ -218,6 +218,7 @@ export default function TaskLibrary() {
           onClose={() => {
             setShowApplyModal(false);
             setSelectedTaskSet(null);
+            mutate();
           }}
         />
       </div>

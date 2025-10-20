@@ -1,7 +1,8 @@
 import Head from "next/head";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
-import useSWR from "swr";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/router";
 import { BellIcon } from "@heroicons/react/24/outline";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -14,12 +15,26 @@ export default function Layout({
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
+  const router = useRouter();
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const { data } = useSWR("/api/notifications/unread-count", fetcher, {
-    refreshInterval: 10000, // refresh every 10s
-  });
+  const fetchUnreadCount = async () => {
+    try {
+      const data = await fetcher("/api/notifications/unread-count");
+      setUnreadCount(data?.unreadCount || 0);
+    } catch {
+      setUnreadCount(0);
+    }
+  };
 
-  const unreadCount = data?.unreadCount || 0;
+  useEffect(() => {
+    fetchUnreadCount();
+
+    router.events.on("routeChangeComplete", fetchUnreadCount);
+    return () => {
+      router.events.off("routeChangeComplete", fetchUnreadCount);
+    };
+  }, [router.events]);
 
   return (
     <div>
