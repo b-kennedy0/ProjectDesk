@@ -9,23 +9,61 @@ export async function updateProjectStatus(projectId: number) {
   if (!project) return;
 
   const now = new Date();
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // Grace period for overdue tasks
   const overdueTasks = project.tasks.filter(
-    t => t.dueDate && new Date(t.dueDate) < now && t.status !== "done"
+    t =>
+      t.dueDate &&
+      new Date(t.dueDate).getTime() < now.getTime() - oneDayMs &&
+      t.status !== "done" &&
+      t.status !== "completed"
   );
+
+  // Tasks exceeding project end date
   const tasksBeyondProject = project.tasks.filter(
-    t => t.dueDate && project.endDate && new Date(t.dueDate) > new Date(project.endDate)
+    t =>
+      t.dueDate &&
+      project.endDate &&
+      new Date(t.dueDate).getTime() > new Date(project.endDate).getTime()
+  );
+
+  // Tasks where duration extends past project end
+  const durationOverflow = project.tasks.filter(
+    t =>
+      t.startDate &&
+      t.duration &&
+      project.endDate &&
+      new Date(t.startDate).getTime() + t.duration * oneDayMs >
+        new Date(project.endDate).getTime()
+  );
+
+  // Identify tasks behind schedule (based on status and due date)
+  const behindScheduleTasks = project.tasks.filter(
+    t =>
+      t.dueDate &&
+      new Date(t.dueDate).getTime() < now.getTime() &&
+      (t.status === "behind_schedule" ||
+        t.status === "not_started" ||
+        t.status === "to_do")
   );
 
   let newStatus = "On Track";
 
-  if (project.tasks.every(t => t.status === "done")) {
+  if (project.tasks.length === 0) {
+    newStatus = "Not Started";
+  } else if (project.tasks.every(t => t.status === "done" || t.status === "completed")) {
     newStatus = "Completed";
-  } else if (tasksBeyondProject.length > 0) {
+  } else if (durationOverflow.length > 0 || tasksBeyondProject.length > 0) {
     newStatus = "Danger";
-  } else if (overdueTasks.length > 1) {
-    newStatus = "Behind Schedule";
-  } else if (overdueTasks.length === 1) {
+  } else if (behindScheduleTasks.length >= 2) {
+    newStatus = "Danger";
+  } else if (behindScheduleTasks.length === 1) {
     newStatus = "At Risk";
+  } else if (overdueTasks.length > 0) {
+    newStatus = "Behind Schedule";
+  } else {
+    newStatus = "On Track";
   }
 
   await prisma.project.update({
@@ -33,5 +71,9 @@ export async function updateProjectStatus(projectId: number) {
     data: { status: newStatus },
   });
 
-  return newStatus;
+  return {
+    status: newStatus,
+    overdueTasks: overdueTasks.length,
+    beyondEnd: tasksBeyondProject.length,
+  };
 }
