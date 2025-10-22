@@ -327,7 +327,7 @@ export default function ProjectOverview() {
 
             {/* People */}
             <div>
-              <h3 className="font-semibold text-gray-800 mb-2">Team</h3>
+              <h3 className="font-semibold text-gray-800 mb-2">👥 Team</h3>
               <ul className="text-gray-700 space-y-1">
                 <li>
                   <strong>Supervisor:</strong> {project.supervisor?.name}{" "}
