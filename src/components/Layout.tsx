@@ -239,7 +239,7 @@ export default function Layout({
           ) : (
             <div className="flex items-center gap-2">
               <button
-                onClick={() => signIn()}
+                onClick={() => signIn(undefined, { callbackUrl: "/dashboard" })}
                 className="rounded-full px-4 py-1.5 text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-100 transition"
               >
                 Sign in

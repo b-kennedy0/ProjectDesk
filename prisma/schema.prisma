@@ -28,6 +28,7 @@ model User {
   studentProjects       Project[]       @relation("ProjectStudents")
   multiAssignedTasks    Task[]          @relation("TaskAssignments")
   emailVerifications    EmailVerification[]
+  passwordResets        PasswordResetToken[]
 }
 
 model Project {
@@ -122,6 +123,18 @@ model EmailVerification {
   id        Int      @id @default(autoincrement())
   userId    Int
   newEmail  String?
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
   token     String   @unique
   expiresAt DateTime
   createdAt DateTime @default(now())

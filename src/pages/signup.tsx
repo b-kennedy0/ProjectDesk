@@ -104,7 +104,10 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-gray-600">
           Already have an account?{' '}
-          <button onClick={() => signIn()} className="font-semibold text-blue-600 hover:underline">
+          <button
+            onClick={() => signIn(undefined, { callbackUrl: "/dashboard" })}
+            className="font-semibold text-blue-600 hover:underline"
+          >
             Sign in
           </button>
         </p>
