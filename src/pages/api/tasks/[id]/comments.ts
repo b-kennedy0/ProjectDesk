@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { taskId: Number(taskId) },
         orderBy: { createdAt: "asc" },
         include: {
-          user: {
+          User: {
             select: {
               id: true,
               name: true,
@@ -26,8 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
         },
       });
-      res.status(200).json(comments);
+      const formatted = comments.map(({ User, ...rest }) => ({
+        ...rest,
+        user: User,
+      }));
+      res.status(200).json(formatted);
     } catch (error) {
+      console.error("Error fetching comments:", error);
       res.status(500).json({ error: "Failed to fetch comments" });
     }
   } else if (req.method === "POST") {
@@ -47,12 +52,55 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const comment = await prisma.comment.create({
         data: {
           content,
-          user: { connect: { id: session.user.id } },
+          User: { connect: { id: Number(session.user.id) } },
           task: { connect: { id: Number(taskId) } },
         },
+        include: {
+          User: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          task: {
+            include: {
+              project: {
+                include: {
+                  supervisor: true,
+                  students: true,
+                  collaborators: true,
+                },
+              },
+            },
+          },
+        },
       });
-      res.status(201).json(comment);
+
+      const { project } = comment.task;
+      const recipients = [
+        project.supervisor,
+        ...project.students,
+        ...project.collaborators,
+      ].filter((u) => u && u.id !== session.user.id);
+
+      if (recipients.length > 0) {
+        await prisma.notification.createMany({
+          data: recipients.map((u) => ({
+            actorId: Number(session.user.id),
+            recipientId: u.id,
+            message: `${session.user.name || "Someone"} commented on "${comment.task.title}" in "${project.title}"`,
+            taskId: comment.task.id,
+            projectId: project.id,
+            type: "new_comment",
+          })),
+        });
+      }
+
+      const { User, ...rest } = comment;
+      res.status(201).json({ ...rest, user: User });
     } catch (error) {
+      console.error("Error creating comment or notifications:", error);
       res.status(500).json({ error: "Failed to create comment" });
     }
   } else if (req.method === "PATCH") {

@@ -3,6 +3,13 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { ProjectLayout } from "@/components/ProjectLayout";
 import { toast, Toaster } from "react-hot-toast";
+import { useState } from "react";
+
+type PendingTask = {
+  id: number;
+  title: string;
+  status: string;
+};
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -10,13 +17,159 @@ export default function ProjectOverview() {
   const router = useRouter();
   const { id } = router.query;
 
-  const { data: project, error } = useSWR(
+  const { data: project, error, mutate } = useSWR(
     id ? `/api/projects/${id}` : null,
     fetcher
   );
 
+  const [pendingTasks, setPendingTasks] = useState<PendingTask[] | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [isForceCompleting, setIsForceCompleting] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
+
+  const formatTaskStatus = (status: string) =>
+    status
+      ? status
+          .toString()
+          .split("_")
+          .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
+          .join(" ")
+      : "Unknown";
+
+  const attemptProjectCompletion = async () => {
+    if (!confirm("Mark this project as completed?")) return;
+    setIsCompleting(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/complete`, {
+        method: "PUT",
+      });
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch (parseError) {
+        payload = null;
+      }
+
+      if (res.ok) {
+        toast.success("Project marked as completed!");
+        router.push("/dashboard");
+        return;
+      }
+
+      if (res.status === 409 && payload?.code === "INCOMPLETE_TASKS") {
+        const tasks = Array.isArray(payload.tasks) ? payload.tasks : [];
+        if (tasks.length > 0) {
+          setPendingTasks(tasks);
+        } else {
+          toast.error(
+            payload?.error || "Cannot complete project while tasks remain open."
+          );
+        }
+        return;
+      }
+
+      throw new Error(payload?.error || "Failed to complete project");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not mark project as completed"
+      );
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  const forceCompleteProject = async () => {
+    if (!id) return;
+    setIsForceCompleting(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/complete`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ forceComplete: true }),
+      });
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch (parseError) {
+        payload = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(payload?.error || "Failed to complete project");
+      }
+
+      toast.success(
+        "All outstanding tasks marked complete and project completed!"
+      );
+      setPendingTasks(null);
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not force complete project"
+      );
+    } finally {
+      setIsForceCompleting(false);
+    }
+  };
+
+  const dismissWarning = () => setPendingTasks(null);
+
+  const reactivateProject = async () => {
+    if (!id) return;
+    if (!confirm("Reactivate this project?")) return;
+    setIsReactivating(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/reactivate`, {
+        method: "PUT",
+      });
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(payload?.error || "Failed to reactivate project");
+      }
+
+      toast.success("Project reactivated!");
+      setPendingTasks(null);
+      await mutate();
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Could not reactivate project"
+      );
+    } finally {
+      setIsReactivating(false);
+    }
+  };
+
   if (error) return <Layout title="Project">Failed to load project.</Layout>;
   if (!project) return <Layout title="Project">Loading...</Layout>;
+
+  const statusLabel = project.isCompleted
+    ? "Completed"
+    : project.status || "Unknown";
+
+  const statusClass = project.isCompleted
+    ? "bg-green-200 text-green-800"
+    : project.status === "On Track"
+    ? "bg-green-100 text-green-800"
+    : project.status === "At Risk"
+    ? "bg-yellow-100 text-yellow-800"
+    : project.status === "Danger"
+    ? "bg-orange-100 text-orange-800"
+    : "bg-red-100 text-red-800";
 
   // Compute timeline progress
   const progress =
@@ -52,17 +205,9 @@ export default function ProjectOverview() {
             {/* Status */}
             <div className="flex items-center space-x-3">
               <span
-                className={`px-3 py-1 rounded-full text-sm font-medium ${
-                  project.status === "On Track"
-                    ? "bg-green-100 text-green-800"
-                    : project.status === "At Risk"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : project.status === "Danger"
-                    ? "bg-orange-100 text-orange-800"
-                    : "bg-red-100 text-red-800"
-                }`}
+                className={`px-3 py-1 rounded-full text-sm font-medium ${statusClass}`}
               >
-                {project.status}
+                {statusLabel}
               </span>
               <span className="text-gray-600 text-sm">Project Status</span>
             </div>
@@ -167,33 +312,70 @@ export default function ProjectOverview() {
               >
                 Request Update
               </button>
-              <button
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                onClick={async () => {
-                  if (!confirm("Mark this project as completed?")) return;
-                  try {
-                    const res = await fetch(`/api/projects/${id}/complete`, {
-                      method: "PUT",
-                    });
-                    const data = await res.json();
-                    if (!res.ok)
-                      throw new Error(
-                        data.error || "Failed to complete project"
-                      );
-                    toast.success("Project marked as completed!");
-                    router.push("/dashboard");
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Could not mark project as completed");
-                  }
-                }}
-              >
-                Mark as Completed
-              </button>
+              {project.isCompleted ? (
+                <button
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={reactivateProject}
+                  disabled={isReactivating}
+                >
+                  {isReactivating ? "Reactivating..." : "Reactivate Project"}
+                </button>
+              ) : (
+                <button
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                  onClick={attemptProjectCompletion}
+                  disabled={isCompleting}
+                >
+                  {isCompleting ? "Marking..." : "Mark as Completed"}
+                </button>
+              )}
             </div>
           </section>
         </ProjectLayout>
       </div>
+      {pendingTasks && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-lg rounded-md bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Outstanding Tasks Detected
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              This project still has {pendingTasks.length} open
+              {pendingTasks.length === 1 ? " task" : " tasks"}. You can mark
+              them all as complete and finish the project, or cancel and review
+              the tasks manually.
+            </p>
+            <ul className="mb-4 max-h-40 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 space-y-2">
+              {pendingTasks.map((task) => (
+                <li key={task.id}>
+                  <span className="font-medium text-gray-900">{task.title}</span>{" "}
+                  <span className="text-xs tracking-wide text-gray-500">
+                    ({formatTaskStatus(task.status)})
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <div className="flex flex-col sm:flex-row sm:justify-end sm:space-x-3 gap-3">
+              <button
+                className="w-full sm:w-auto rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                onClick={dismissWarning}
+                disabled={isForceCompleting}
+              >
+                Cancel
+              </button>
+              <button
+                className="w-full sm:w-auto rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={forceCompleteProject}
+                disabled={isForceCompleting}
+              >
+                {isForceCompleting
+                  ? "Completing..."
+                  : "Mark Tasks Complete & Finish Project"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <Toaster position="bottom-right" />
     </Layout>
   );

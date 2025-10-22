@@ -30,10 +30,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const wasFlagged = task.flagged;
 
-    // ✅ Toggle flag
+    // ✅ Toggle flag and record who flagged
     const updatedTask = await prisma.task.update({
       where: { id: taskId },
-      data: { flagged: !wasFlagged },
+      data: { 
+        flagged: !wasFlagged,
+        flaggedBy: {
+    connect: { id: session.user.id },
+        },
+      },
+      include: { flaggedBy: true },
     });
 
     await updateProjectStatus(updatedTask.projectId);
@@ -54,7 +60,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json({
       message: wasFlagged ? "Task unflagged" : "Task flagged and supervisor notified",
-      task: updatedTask,
+      task: {
+        ...updatedTask,
+        flaggedByName: updatedTask.flaggedBy?.name || null,
+      },
     });
   } catch (error) {
     console.error(error);

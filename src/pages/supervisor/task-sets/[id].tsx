@@ -36,16 +36,32 @@ export default function TaskSetDetails() {
   const [localOrder, setLocalOrder] = useState<string[]>([]);
 
   useEffect(() => {
-    if (data) {
-      const currentIds = Array.isArray(data)
-        ? data.map((t) => t.id)
-        : data.templates?.map((t) => t.id) || [];
+    if (!data) return;
+    const currentIds = (Array.isArray(data)
+      ? data.map((t) => t.id)
+      : data.templates?.map((t) => t.id) || []
+    ).map((id: any) => String(id));
 
-      // Only set once — when localOrder is empty
-      if (localOrder.length === 0) {
-        setLocalOrder(currentIds);
+    setLocalOrder((prev) => {
+      if (prev.length === 0) {
+        return currentIds;
       }
-    }
+
+      const filteredPrev = prev.filter((id) => currentIds.includes(id));
+      const additions = currentIds.filter((id) => !filteredPrev.includes(id));
+      const merged = [...filteredPrev, ...additions];
+
+      const changed =
+        merged.length !== prev.length ||
+        merged.some((id, index) => id !== prev[index]);
+
+      if (changed) {
+        return merged;
+      }
+
+      // Preserve existing local order when nothing changed structurally
+      return prev;
+    });
   }, [data]);
 
   useEffect(()=>{

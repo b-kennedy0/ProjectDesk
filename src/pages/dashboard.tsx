@@ -49,6 +49,20 @@ export default function Dashboard() {
       ? `Supervisor: ${p.supervisor.name}`
       : "Unassigned";
 
+    const statusLabel = p.isCompleted ? "Completed" : p.status || "Unknown";
+
+    const statusClass = p.isCompleted
+      ? "bg-green-200 text-green-800"
+      : p.status === "On Track"
+      ? "bg-green-100 text-green-800"
+      : p.status === "At Risk"
+      ? "bg-yellow-100 text-yellow-800"
+      : p.status === "Danger"
+      ? "bg-orange-100 text-orange-800"
+      : p.status === "Failing" || p.status === "Behind Schedule"
+      ? "bg-red-100 text-red-800"
+      : "bg-gray-200 text-gray-600";
+
     return (
       <li
         key={p.id}
@@ -76,22 +90,12 @@ export default function Dashboard() {
           </p>
 
           {/* Project status */}
-          {p.status && (
-            <p
-              className={`text-xs mt-1 ${
-                p.status === "On Track"
-                  ? "text-blue-600"
-                  : p.status === "At Risk"
-                  ? "text-yellow-600"
-                  : (p.status === "Failing" || p.status === "Behind Schedule")
-                  ? "text-red-600"
-                  : p.status === "Completed"
-                  ? "text-gray-600"
-                  : "text-gray-500"
-              }`}
+          {statusLabel && (
+            <span
+              className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded mt-2 ${statusClass}`}
             >
-              {p.status}
-            </p>
+              {statusLabel}
+            </span>
           )}
 
           <div className="h-2 bg-gray-200 rounded-full mt-2">

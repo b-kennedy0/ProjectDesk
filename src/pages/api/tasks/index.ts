@@ -17,7 +17,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const tasks = await prisma.task.findMany({
       where: { projectId: Number(projectId) },
-      include: { comments: { include: { user: true } } },
       orderBy: [{ dueDate: 'asc' }, { id: 'asc' }],
     });
     return res.json(tasks);

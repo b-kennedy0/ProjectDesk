@@ -38,8 +38,7 @@ export default function AssistanceGallery() {
                       Project: <span className="font-medium">{task.project.title}</span>
                     </p>
                     <p className="text-sm text-gray-500">
-                      Flagged by: {task.assignee?.name || "Unknown user"} (
-                      {task.assignee?.email || "N/A"})
+                      Flagged by: {task.flaggedByName || "Unknown (N/A)"}
                     </p>
                   </div>
                   <Link
