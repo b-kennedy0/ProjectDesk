@@ -13,7 +13,7 @@ export default function ProjectTasks() {
   const { id } = router.query;
 
   const { data: session } = useSession();
-  const userRole = session?.user?.role;
+  const userRole = (session?.user as any)?.role;
 
   const [isModalOpen, setModalOpen] = useState(false);
 

@@ -2,7 +2,7 @@ import { useRouter } from "next/router";
 import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, type CSSProperties } from "react";
 import { GripVertical } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -38,8 +38,8 @@ export default function TaskSetDetails() {
   useEffect(() => {
     if (!data) return;
     const currentIds = (Array.isArray(data)
-      ? data.map((t) => t.id)
-      : data.templates?.map((t) => t.id) || []
+      ? data.map((t: any) => t.id)
+      : data.templates?.map((t: any) => t.id) || []
     ).map((id: any) => String(id));
 
     setLocalOrder((prev) => {
@@ -47,8 +47,8 @@ export default function TaskSetDetails() {
         return currentIds;
       }
 
-      const filteredPrev = prev.filter((id) => currentIds.includes(id));
-      const additions = currentIds.filter((id) => !filteredPrev.includes(id));
+      const filteredPrev = prev.filter((id: string) => currentIds.includes(id));
+      const additions = currentIds.filter((id: string) => !filteredPrev.includes(id));
       const merged = [...filteredPrev, ...additions];
 
       const changed =
@@ -68,7 +68,8 @@ export default function TaskSetDetails() {
   }, [localOrder]);
 
   // Security check
-  if (!session || session.user.role !== "SUPERVISOR") {
+  const userRole = (session?.user as any)?.role;
+  if (!userRole || userRole !== "SUPERVISOR") {
     return (
       <Layout title="Access Denied">
         <p className="p-6 text-red-600">Access denied.</p>
@@ -202,12 +203,12 @@ export default function TaskSetDetails() {
 
   // Get the list of templates based on data shape and sort by order
   const templates = (Array.isArray(data) ? data : data.templates || []).sort(
-    (a, b) => (a.order ?? 0) - (b.order ?? 0)
+    (a: any, b: any) => (a.order ?? 0) - (b.order ?? 0)
   );
 
   // Sort templates by localOrder, normalizing ID types
   const orderedTemplates = localOrder
-    .map((id) => templates.find((t) => String(t.id) === String(id)))
+    .map((id: string) => templates.find((t: any) => String(t.id) === String(id)))
     .filter((t): t is typeof templates[0] => !!t);
 
   // SortableItem component
@@ -221,7 +222,7 @@ export default function TaskSetDetails() {
       isDragging,
     } = useSortable({ id });
 
-    const cardStyle = {
+    const cardStyle: CSSProperties = {
       transform: CSS.Transform.toString(transform),
       transition,
       zIndex: isDragging ? 999 : undefined,

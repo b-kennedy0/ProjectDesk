@@ -14,6 +14,8 @@ model User {
   supervisorId          Int?
   passwordHash          String?
   role                  UserRole        @default(STUDENT)
+  emailVerified         DateTime?
+  pendingEmail          String?
   Comment               Comment[]
   sentNotifications     Notification[]  @relation("ActorNotifications")
   receivedNotifications Notification[]  @relation("RecipientNotifications")
@@ -25,6 +27,7 @@ model User {
   collaboratorProjects  Project[]       @relation("ProjectCollaborators")
   studentProjects       Project[]       @relation("ProjectStudents")
   multiAssignedTasks    Task[]          @relation("TaskAssignments")
+  emailVerifications    EmailVerification[]
 }
 
 model Project {
@@ -113,6 +116,19 @@ model Notification {
 
   @@index([recipientId, read])
   @@index([projectId])
+}
+
+model EmailVerification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  newEmail  String?
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model TaskSet {

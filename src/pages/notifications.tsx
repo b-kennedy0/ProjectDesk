@@ -45,23 +45,22 @@ export default function NotificationsPage() {
                 <span>{toTitleCase(n.type)}</span>
               </div>
               <div className="text-sm mb-2">{n.message}</div>
-              {n.type === 'task_flagged' ? (
+              {n.type === 'task_flagged' || n.type === 'new_comment' ? (
                 <a
                   className="text-xs text-blue-700 underline cursor-pointer"
-                  href={`/tasks/${n.taskId}`}
+                  href={n.taskId ? `/tasks/${n.taskId}` : `/projects/${n.projectId}`}
                   onClick={async (e) => {
                     e.preventDefault();
                     try {
-                      const res = await fetch(`/api/notifications/${n.id}`, {
+                      const res = await fetch('/api/notifications', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ read: true }),
+                        body: JSON.stringify({ ids: [n.id], read: true }),
                       });
                       if (res.ok) {
                         mutate();
-                        // small delay to ensure DB updates before redirect
                         setTimeout(() => {
-                          window.location.href = `/tasks/${n.taskId}`;
+                          window.location.href = n.taskId ? `/tasks/${n.taskId}` : `/projects/${n.projectId}`;
                         }, 150);
                       } else {
                         console.error("Failed to mark notification as read");
@@ -71,11 +70,11 @@ export default function NotificationsPage() {
                     }
                   }}
                 >
-                  View Task
+                  {n.type === 'new_comment' && n.taskId ? 'View Comment' : 'View Task'}
                 </a>
               ) : (
                 <a className="text-xs text-blue-700 underline" href={`/projects/${n.projectId}`}>
-                  View project
+                  View Project
                 </a>
               )}
             </li>

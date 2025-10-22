@@ -1,4 +1,3 @@
-import type { NextAuthOptions } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import AzureAD from 'next-auth/providers/azure-ad';
 import { PrismaAdapter } from '@next-auth/prisma-adapter';
@@ -8,9 +7,9 @@ import bcrypt from 'bcryptjs';
 const azureEnabled = process.env.AZURE_AD_ENABLED === 'true';
 const localEnabled = process.env.LOCAL_AUTH_ENABLED !== 'false';
 
-export const authOptions: NextAuthOptions = {
+export const authOptions = {
   adapter: PrismaAdapter(prisma),
-  session: { strategy: 'jwt' },
+  session: { strategy: 'jwt' as const },
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     ...(azureEnabled
@@ -44,14 +43,14 @@ export const authOptions: NextAuthOptions = {
       : []),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) {
         token.id = (user as any).id ?? token.id;
         token.role = (user as any).role ?? token.role;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user) {
         (session.user as any).id = token.id;
         (session.user as any).role = token.role;

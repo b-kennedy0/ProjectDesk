@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: "Failed to fetch comments" });
     }
   } else if (req.method === "POST") {
-    const session = await getServerSession(req, res, authOptions);
+    const session = (await getServerSession(req, res, authOptions as any)) as any;
     if (!session || !session.user?.id) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -65,11 +65,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           },
           task: {
             include: {
+              assignedUsers: true,
               project: {
                 include: {
                   supervisor: true,
                   students: true,
                   collaborators: true,
+                  members: {
+                    include: {
+                      user: true,
+                    },
+                  },
                 },
               },
             },
@@ -78,16 +84,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
 
       const { project } = comment.task;
-      const recipients = [
-        project.supervisor,
-        ...project.students,
-        ...project.collaborators,
-      ].filter((u) => u && u.id !== session.user.id);
+      const actorId = Number(session.user.id);
+      const recipientMap = new Map<number, { id: number; name: string | null; email: string | null }>();
+
+      const addRecipient = (user?: { id: number; name: string | null; email: string | null } | null) => {
+        if (!user || typeof user.id !== "number") return;
+        if (user.id === actorId) return;
+        if (!recipientMap.has(user.id)) {
+          recipientMap.set(user.id, { id: user.id, name: user.name || null, email: user.email || null });
+        }
+      };
+
+      addRecipient(project.supervisor);
+      project.students?.forEach(addRecipient);
+      project.collaborators?.forEach(addRecipient);
+      project.members?.forEach((member) => addRecipient(member?.user || null));
+      comment.task.assignedUsers?.forEach(addRecipient);
+
+      const recipients = Array.from(recipientMap.values());
 
       if (recipients.length > 0) {
         await prisma.notification.createMany({
           data: recipients.map((u) => ({
-            actorId: Number(session.user.id),
+            actorId,
             recipientId: u.id,
             message: `${session.user.name || "Someone"} commented on "${comment.task.title}" in "${project.title}"`,
             taskId: comment.task.id,
@@ -104,7 +123,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: "Failed to create comment" });
     }
   } else if (req.method === "PATCH") {
-    const session = await getServerSession(req, res, authOptions);
+    const session = (await getServerSession(req, res, authOptions as any)) as any;
     if (!session || !session.user?.id) {
       res.status(401).json({ error: "Unauthorized" });
       return;
@@ -139,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ error: "Failed to update comment" });
     }
   } else if (req.method === "DELETE") {
-    const session = await getServerSession(req, res, authOptions);
+    const session = (await getServerSession(req, res, authOptions as any)) as any;
     if (!session || !session.user?.id) {
       res.status(401).json({ error: "Unauthorized" });
       return;

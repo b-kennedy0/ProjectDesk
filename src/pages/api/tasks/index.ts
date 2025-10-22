@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getServerSession } from 'next-auth/next';
 import { authOptions, requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { TaskStatus } from '@prisma/client';
 import { updateProjectStatus } from '@/lib/updateProjectStatus';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getServerSession(req, res, authOptions);
+  const session = (await getServerSession(req, res, authOptions as any)) as any;
   if (!session) return res.status(401).json({ error: 'Unauthorized' });
 
   const userId = Number((session.user as any).id);
@@ -56,12 +57,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const normalizedStatus = status
       ? String(status).toUpperCase().replace(/\s+/g, '_')
       : undefined;
+    const taskStatus = normalizedStatus && normalizedStatus in TaskStatus
+      ? (normalizedStatus as keyof typeof TaskStatus)
+      : undefined;
 
     const updated = await prisma.task.update({
       where: { id: Number(id) },
       data: {
         flagged: typeof flagged === 'boolean' ? flagged : undefined,
-        status: normalizedStatus ?? undefined,
+        status: taskStatus ? TaskStatus[taskStatus] : undefined,
         dueDate: typeof dueDate === 'string' ? new Date(dueDate) : undefined,
         dependencyTaskId: dependencyTaskId === undefined ? undefined : dependencyTaskId,
         duration: duration ? Number(duration) : undefined,

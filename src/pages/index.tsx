@@ -1,30 +1,72 @@
-import Link from 'next/link';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import Image from "next/image";
+import Link from "next/link";
+import { useSession, signIn } from "next-auth/react";
+import Layout from "@/components/Layout";
+import Logo from "@/assets/branding/ProjectDesk_logo.png";
+import { quoteOfTheDay } from "@/lib/quotes";
 
 export default function Home() {
   const { data: session } = useSession();
+  const quote = quoteOfTheDay();
+  const welcomeName = session?.user?.name || session?.user?.email;
+
   return (
-    <main className="min-h-screen flex items-center justify-center p-8">
-      <div className="max-w-xl w-full space-y-6 text-center">
-        <h1 className="text-3xl font-bold">ProjectDesk</h1>
-        <p className="text-gray-600">Research project management for supervisors, students, and collaborators.</p>
-        {!session ? (
-          <button
-            onClick={() => signIn()}
-            className="px-4 py-2 bg-black text-white rounded-md"
+    <Layout>
+      <section className="flex flex-col items-center text-center gap-6">
+        <Image src={Logo} alt="ProjectDesk" className="h-16 w-auto" priority />
+        <div className="space-y-3">
+          <h1 className="text-3xl font-bold text-gray-900">
+            {session ? `Welcome back${welcomeName ? `, ${welcomeName}` : ""}!` : "Welcome to ProjectDesk"}
+          </h1>
+          <p className="text-gray-600 max-w-2xl">
+            ProjectDesk keeps research teams organised, connected, and on track. Plan milestones, support students, and collaborate with confidence.
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          {session ? (
+            <>
+              <Link
+                href="/dashboard"
+                className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Go to dashboard
+              </Link>
+              <span className="rounded-md border border-gray-200 px-4 py-2 text-sm text-gray-600">
+                Signed in as {session.user?.email}
+              </span>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => signIn()}
+                className="rounded-md bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition"
+              >
+                Sign in
+              </button>
+              <Link
+                href="/signup"
+                className="rounded-md border border-blue-600 px-5 py-2 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition"
+              >
+                Create account
+              </Link>
+            </>
+          )}
+          <a
+            href="https://projectdesk.app/learn-more"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-md border border-gray-200 px-5 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition"
           >
-            Sign in
-          </button>
-        ) : (
-          <div className="space-y-3">
-            <p>Signed in as <strong>{session.user?.email}</strong></p>
-            <div className="flex gap-3 justify-center">
-              <Link href="/dashboard" className="px-4 py-2 bg-black text-white rounded-md">Go to Dashboard</Link>
-              <button onClick={() => signOut()} className="px-4 py-2 border rounded-md">Sign out</button>
-            </div>
-          </div>
-        )}
-      </div>
-    </main>
+            Learn more
+          </a>
+        </div>
+
+        <div className="mt-8 max-w-2xl rounded-lg border border-blue-100 bg-blue-50 px-5 py-4 text-left">
+          <p className="text-xs uppercase tracking-wide text-blue-600">Quote of the day</p>
+          <blockquote className="mt-2 text-base italic text-gray-700">“{quote.text}”</blockquote>
+          <p className="mt-2 text-sm font-semibold text-blue-700">— {quote.author}</p>
+        </div>
+      </section>
+    </Layout>
   );
 }

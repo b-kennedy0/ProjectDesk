@@ -17,6 +17,7 @@ async function main() {
       name: 'Demo Supervisor',
       role: 'SUPERVISOR',
       passwordHash,
+      emailVerified: new Date(),
     },
   });
 
@@ -31,6 +32,7 @@ async function main() {
       name: 'Student One',
       role: 'STUDENT',
       passwordHash: await bcrypt.hash('studentpass1', 10),
+      emailVerified: new Date(),
     },
   });
 
@@ -42,6 +44,7 @@ async function main() {
       name: 'Student Two',
       role: 'STUDENT',
       passwordHash: await bcrypt.hash('studentpass2', 10),
+      emailVerified: new Date(),
     },
   });
 
@@ -53,6 +56,7 @@ async function main() {
       name: 'Collaborator One',
       role: 'COLLABORATOR',
       passwordHash: await bcrypt.hash('collabpass1', 10),
+      emailVerified: new Date(),
     },
   });
 
@@ -64,6 +68,7 @@ async function main() {
       name: 'Collaborator Two',
       role: 'COLLABORATOR',
       passwordHash: await bcrypt.hash('collabpass2', 10),
+      emailVerified: new Date(),
     },
   });
 

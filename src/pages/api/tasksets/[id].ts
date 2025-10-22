@@ -4,7 +4,7 @@ import { authOptions } from "../auth/[...nextauth]";
 import { prisma } from "@/lib/prisma";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const session = await getServerSession(req, res, authOptions);
+  const session = (await getServerSession(req, res, authOptions as any)) as any;
 
   if (!session || session.user.role !== "SUPERVISOR") {
     return res.status(403).json({ error: "Access denied" });

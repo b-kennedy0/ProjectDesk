@@ -6,6 +6,7 @@ import Layout from "@/components/Layout";
 import TaskSetModal from "@/components/TaskSetModal";
 import ApplyTaskSetModal from "@/components/ApplyTaskSetModal";
 import useSWR from "swr";
+import { Layers } from "lucide-react";
 
 export default function TaskLibrary() {
   const { data: session } = useSession();
@@ -19,10 +20,11 @@ export default function TaskLibrary() {
   const [editName, setEditName] = useState<string>("");
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const { data, error, mutate } = useSWR("/api/tasksets", fetcher);
-  console.log("Task sets:", data, "Error:", error);
+
+  const userRole = (session?.user as any)?.role;
 
   // Supervisor access check
-  if (!session || session.user.role !== "SUPERVISOR") {
+  if (!userRole || userRole !== "SUPERVISOR") {
     return (
       <Layout title="Access Denied">
         <p className="p-6 text-red-600">Access denied.</p>
@@ -61,7 +63,10 @@ export default function TaskLibrary() {
       <div className="max-w-5xl mx-auto p-6 space-y-6 text-gray-700">
         {/* Page intro */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-5">
-          <h1 className="text-2xl font-semibold mb-2">Task Library</h1>
+          <h1 className="mb-2 flex items-center gap-2 text-2xl font-semibold text-gray-900">
+            <Layers className="h-6 w-6 text-gray-800" />
+            <span>Task Library</span>
+          </h1>
           <p>
             Here you can create template sets of tasks that can be bulk applied to a project.
             <br />For example, you might create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would
@@ -89,7 +94,7 @@ export default function TaskLibrary() {
             <p>No task sets yet. Create one to get started.</p>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {data.map((ts) => (
+              {data.map((ts: any) => (
                 <li key={ts.id} className="flex justify-between items-center py-4">
                   <div className="flex items-center gap-3">
                     {editingId === ts.id ? (

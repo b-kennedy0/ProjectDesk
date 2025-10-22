@@ -692,7 +692,7 @@ function CommentsSection({ taskId }: { taskId: string | number }) {
                   )}
                   {/* Edit/Delete buttons if not editing */}
                   {editingId !== c.id &&
-                    Number(session?.user?.id) === Number(c.user?.id) && (
+                    Number((session?.user as any)?.id) === Number(c.user?.id) && (
                       <div className="flex gap-2 mt-1 text-xs">
                         <button
                           onClick={() => startEditing(c.id, c.content)}

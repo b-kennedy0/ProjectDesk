@@ -35,7 +35,7 @@ export default async function handler(
     return res.status(400).json({ error: "Invalid task ID" });
   }
 
-  const session = await getServerSession(req, res, authOptions);
+  const session = (await getServerSession(req, res, authOptions as any)) as any;
   if (!session) {
     return res.status(401).json({ error: "Unauthorized" });
   }
@@ -135,15 +135,18 @@ export default async function handler(
       });
       // Actor's name
       const actorName = session.user?.name || session.user?.email || "Someone";
+      const actorId = Number(session.user?.id) || undefined;
       // Find assigned user to notify
       const assigneeId = task.assigneeId;
       if (assigneeId) {
         await prisma.notification.create({
           data: {
-            type: "flag",
+            type: "task_flagged",
             message: `Task "${task.title}" was flagged by ${actorName}`,
-            userId: assigneeId,
             taskId: Number(id),
+            projectId: task.projectId,
+            recipientId: assigneeId,
+            actorId: actorId ?? assigneeId,
           },
         });
       }

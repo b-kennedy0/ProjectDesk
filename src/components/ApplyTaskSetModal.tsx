@@ -42,7 +42,15 @@ export default function ApplyTaskSetModal({ open: isOpen, onClose, taskSet }: Ap
         if (!res.ok) throw new Error("Failed to fetch projects");
         return res.json();
       })
-      .then((data) => setProjects(Array.isArray(data) ? data : []))
+      .then((data) => {
+        const list = Array.isArray(data)
+          ? data.filter((project) => !project.isCompleted)
+          : [];
+        setProjects(list);
+        setSelectedProject((prev) =>
+          prev && list.some((project) => String(project.id) === prev) ? prev : ""
+        );
+      })
       .catch(() => {
         setFetchError("Failed to load projects. Please try again.");
         toast.error("Failed to load projects");

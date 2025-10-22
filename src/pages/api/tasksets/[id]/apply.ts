@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const session = await getServerSession(req, res, authOptions);
+  const session = (await getServerSession(req, res, authOptions as any)) as any;
   if (!session || session.user.role !== "SUPERVISOR") {
     return res.status(403).json({ error: "Access denied" });
   }
@@ -51,12 +51,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Project not found or missing start date" });
     }
 
+    const projectStartMs = new Date(project.startDate).getTime();
+
     // Create tasks from templates
     const createdTasks = await Promise.all(
       taskSet.templates.map(async (template) => {
         const dueDate =
           typeof template.dueOffset === "number"
-            ? new Date(new Date(project.startDate).getTime() + template.dueOffset * 86400000)
+            ? new Date(projectStartMs + template.dueOffset * 86400000)
             : null;
 
         return prisma.task.create({

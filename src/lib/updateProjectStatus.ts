@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
 
+const normalizeStatus = (status: unknown) =>
+  typeof status === "string" ? status.toLowerCase() : String(status ?? "").toLowerCase();
+
 export async function updateProjectStatus(projectId: number) {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
@@ -16,8 +19,8 @@ export async function updateProjectStatus(projectId: number) {
     t =>
       t.dueDate &&
       new Date(t.dueDate).getTime() < now.getTime() - oneDayMs &&
-      t.status !== "done" &&
-      t.status !== "completed"
+      normalizeStatus(t.status) !== "done" &&
+      normalizeStatus(t.status) !== "completed"
   );
 
   // Tasks exceeding project end date
@@ -43,16 +46,19 @@ export async function updateProjectStatus(projectId: number) {
     t =>
       t.dueDate &&
       new Date(t.dueDate).getTime() < now.getTime() &&
-      (t.status === "behind_schedule" ||
-        t.status === "not_started" ||
-        t.status === "to_do")
+      ["behind_schedule", "not_started", "to_do", "in_progress"].includes(
+        normalizeStatus(t.status)
+      )
   );
 
   let newStatus = "On Track";
 
   if (project.tasks.length === 0) {
     newStatus = "Not Started";
-  } else if (project.tasks.every(t => t.status === "done" || t.status === "completed")) {
+  } else if (project.tasks.every(t => {
+      const status = normalizeStatus(t.status);
+      return status === "done" || status === "completed" || status === "complete";
+    })) {
     newStatus = "Completed";
   } else if (durationOverflow.length > 0 || tasksBeyondProject.length > 0) {
     newStatus = "Danger";

@@ -7,6 +7,7 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { Toaster } from "react-hot-toast";
 import { useState } from "react";
+import { LayoutDashboard } from "lucide-react";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -111,9 +112,24 @@ export default function Dashboard() {
 
   return (
     <Layout title="Dashboard">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <div className="flex items-center gap-2">
+      <div className="space-y-6 mb-6">
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-gray-900">
+            <LayoutDashboard className="h-6 w-6 text-gray-800" />
+            <span>Dashboard</span>
+          </h1>
+        </div>
+      </div>
+
+      <div className="mb-6 flex justify-between items-center">
+        <ProjectForm
+          onCreated={() => {
+            mutate();
+            toast.success("Project created successfully!");
+          }}
+        />
+        <label className="hidden md:flex items-center gap-2 text-sm text-gray-600">
+          <span>Filter:</span>
           <select
             className="border rounded-md px-3 py-1 text-sm"
             value={category}
@@ -123,16 +139,7 @@ export default function Dashboard() {
             <option value="student-project">Student Projects</option>
             <option value="collaboration">Collaborations</option>
           </select>
-        </div>
-      </div>
-
-      <div className="mb-6">
-        <ProjectForm
-          onCreated={() => {
-            mutate();
-            toast.success("Project created successfully!");
-          }}
-        />
+        </label>
       </div>
 
       <h2 className="text-xl font-semibold mb-3">Active Projects</h2>

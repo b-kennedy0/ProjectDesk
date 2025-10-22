@@ -3,12 +3,19 @@ import useSWR from "swr";
 import Layout from "@/components/Layout";
 import { ProjectLayout } from "@/components/ProjectLayout";
 import { toast, Toaster } from "react-hot-toast";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type PendingTask = {
   id: number;
   title: string;
   status: string;
+};
+
+type TeamMember = {
+  id: number;
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
 };
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -26,6 +33,9 @@ export default function ProjectOverview() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [isForceCompleting, setIsForceCompleting] = useState(false);
   const [isReactivating, setIsReactivating] = useState(false);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+  const [isSendingUpdate, setIsSendingUpdate] = useState(false);
 
   const formatTaskStatus = (status: string) =>
     status
@@ -35,6 +45,21 @@ export default function ProjectOverview() {
           .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
           .join(" ")
       : "Unknown";
+
+  const teamMembers: TeamMember[] = useMemo(() => {
+    if (!project) return [];
+    const members: TeamMember[] = [
+      ...(project.students || []),
+      ...(project.collaborators || []),
+    ];
+    const unique = new Map<number, TeamMember>();
+    for (const member of members) {
+      if (member && typeof member.id === "number") {
+        unique.set(member.id, member);
+      }
+    }
+    return Array.from(unique.values());
+  }, [project]);
 
   const attemptProjectCompletion = async () => {
     if (!confirm("Mark this project as completed?")) return;
@@ -119,6 +144,62 @@ export default function ProjectOverview() {
   };
 
   const dismissWarning = () => setPendingTasks(null);
+
+  const openUpdateModal = () => {
+    if (teamMembers.length === 0) {
+      toast.error("No team members available for this project.");
+      return;
+    }
+    setSelectedRecipients(teamMembers.map((member) => String(member.id)));
+    setShowUpdateModal(true);
+  };
+
+  const toggleRecipient = (memberId: number) => {
+    setSelectedRecipients((prev) => {
+      const id = String(memberId);
+      return prev.includes(id)
+        ? prev.filter((value) => value !== id)
+        : [...prev, id];
+    });
+  };
+
+  const sendUpdateRequest = async () => {
+    if (!id) return;
+    if (selectedRecipients.length === 0) {
+      toast.error("Select at least one team member.");
+      return;
+    }
+    setIsSendingUpdate(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/request-update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          recipientIds: selectedRecipients.map((value) => Number(value)),
+        }),
+      });
+      let payload: any = null;
+      try {
+        payload = await res.json();
+      } catch {
+        payload = null;
+      }
+
+      if (!res.ok) {
+        throw new Error(payload?.error || "Failed to send update request");
+      }
+
+      toast.success("Update request sent!");
+      setShowUpdateModal(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(
+        err instanceof Error ? err.message : "Could not send update request"
+      );
+    } finally {
+      setIsSendingUpdate(false);
+    }
+  };
 
   const reactivateProject = async () => {
     if (!id) return;
@@ -296,19 +377,7 @@ export default function ProjectOverview() {
               </button>
               <button
                 className="px-4 py-2 bg-indigo-500 text-white rounded-md hover:bg-indigo-600"
-                onClick={async () => {
-                  try {
-                    const res = await fetch(
-                      `/api/projects/${id}/request-update`,
-                      { method: "POST" }
-                    );
-                    if (!res.ok) throw new Error("Failed to send request");
-                    toast.success("Update request sent!");
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("Error sending update request");
-                  }
-                }}
+                onClick={openUpdateModal}
               >
                 Request Update
               </button>
@@ -333,6 +402,68 @@ export default function ProjectOverview() {
           </section>
         </ProjectLayout>
       </div>
+      {showUpdateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-md rounded-md bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              Request Progress Update
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Select the team members who should receive this update request.
+            </p>
+            <div className="mb-4 max-h-48 overflow-auto rounded border border-gray-200 bg-gray-50 p-3 space-y-3">
+              {teamMembers.map((member) => {
+                const id = String(member.id);
+                return (
+                  <label
+                    key={member.id}
+                    className="flex items-start gap-3 text-sm text-gray-700"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={selectedRecipients.includes(id)}
+                      onChange={() => toggleRecipient(member.id)}
+                      disabled={isSendingUpdate}
+                    />
+                    <span>
+                      <span className="font-medium text-gray-900">
+                        {member.name || member.email || "Unnamed member"}
+                      </span>
+                      {member.email && (
+                        <span className="block text-xs text-gray-500">
+                          {member.email}
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+              {teamMembers.length === 0 && (
+                <p className="text-sm text-gray-500">
+                  No team members available for this project.
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col sm:flex-row sm:justify-end sm:space-x-3 gap-3">
+              <button
+                className="w-full sm:w-auto rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={() => setShowUpdateModal(false)}
+                disabled={isSendingUpdate}
+              >
+                Cancel
+              </button>
+              <button
+                className="w-full sm:w-auto rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed"
+                onClick={sendUpdateRequest}
+                disabled={isSendingUpdate}
+              >
+                {isSendingUpdate ? "Sending..." : "Send Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {pendingTasks && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
           <div className="w-full max-w-lg rounded-md bg-white p-6 shadow-xl">
