@@ -9,7 +9,7 @@ import { Menu, Transition } from "@headlessui/react";
 import { BellIcon, ChevronDownIcon, UserCircleIcon } from "@heroicons/react/24/outline";
 import { LayoutDashboard, GraduationCap, Layers } from "lucide-react";
 
-import Logo from "@/assets/branding/ProjectDesk_logo.png";
+import Logo from "@/assets/branding/ProjectDesk-Transparent.png";
 import { ProfileOverviewModal } from "@/components/account/ProfileOverviewModal";
 import { EditNameModal } from "@/components/account/EditNameModal";
 import { ChangeEmailModal } from "@/components/account/ChangeEmailModal";

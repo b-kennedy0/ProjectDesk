@@ -118,6 +118,9 @@ export default function Dashboard() {
             <LayoutDashboard className="h-6 w-6 text-gray-800" />
             <span>Dashboard</span>
           </h1>
+          <p className="mt-2 text-sm text-blue-900">
+            Overview page of your projects. The blue line indicates the timeframe of the project.
+          </p>
         </div>
       </div>
 

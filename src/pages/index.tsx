@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import Layout from "@/components/Layout";
-import Logo from "@/assets/branding/ProjectDesk_logo.png";
+import Logo from "@/assets/branding/ProjectDesk-Transparent.png";
 import { quoteOfTheDay } from "@/lib/quotes";
 
 export default function Home() {

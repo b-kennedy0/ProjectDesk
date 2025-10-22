@@ -67,10 +67,9 @@ export default function TaskLibrary() {
             <Layers className="h-6 w-6 text-gray-800" />
             <span>Task Library</span>
           </h1>
-          <p>
-            Here you can create template sets of tasks that can be bulk applied to a project.
-            <br />For example, you might create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would
-            contain a different series of tasks than a <em>Postgraduate Qualitative Project</em> Task Set.
+          <p className="mt-2 text-sm text-blue-900">
+            Create a template set of tasks that can be re-used on multiple projects.
+            <br />E.g. create a Task Set for an <em>Undergraduate Quantitative Project</em>, which would differ to a <em>Postgraduate Qualitative Project</em> Task Set.
           </p>
         </div>
 
