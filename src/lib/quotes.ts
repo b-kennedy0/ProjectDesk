@@ -31,6 +31,18 @@ export const quotes = [
     text: "Teachers affect eternity; no one can tell where their influence stops.",
     author: "Henry Brooks Adams",
   },
+  {
+    text: "Coming together is a beginning; keeping together is progress; working together is success.",
+    author: "Henry Ford",
+  },
+  {
+    text: "It is not the answer that enlightens, but the question.",
+    author: "Eugene Ionesco",
+  },
+  {
+    text: "Any sufficiently advanced technology is indistinguishable from magic.",
+    author: "Arthur C. Clarke",
+  }
 ];
 
 export function quoteOfTheDay() {
