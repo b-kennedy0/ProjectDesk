@@ -116,13 +116,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const { category, isCompleted } = req.query;
-    const where: any = {
-      OR: [
+    const where: any = {};
+
+    if (session.user.role !== "ADMIN") {
+      where.OR = [
         { supervisor: { email: session.user.email } },
         { students: { some: { email: session.user.email } } },
         { collaborators: { some: { email: session.user.email } } },
-      ],
-    };
+      ];
+    }
 
     if (category) where.category = String(category);
     if (isCompleted !== undefined) {

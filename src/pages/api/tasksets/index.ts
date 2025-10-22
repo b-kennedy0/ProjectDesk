@@ -6,7 +6,12 @@ import { prisma } from "@/lib/prisma";
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = (await getServerSession(req, res, authOptions as any)) as any;
 
-  if (!session || session.user.role !== "SUPERVISOR") {
+  if (!session) {
+    return res.status(401).json({ error: "Not authenticated" });
+  }
+
+  const userRole = session.user.role;
+  if (userRole !== "SUPERVISOR" && userRole !== "ADMIN") {
     return res.status(403).json({ error: "Access denied" });
   }
 
@@ -16,7 +21,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     switch (req.method) {
       case "GET": {
         const taskSets = await prisma.taskSet.findMany({
-          where: { supervisorId },
+          where:
+            userRole === "ADMIN"
+              ? {}
+              : {
+                  supervisorId,
+                },
           include: {
             templates: true,
             supervisor: true,

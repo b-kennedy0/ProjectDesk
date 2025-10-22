@@ -12,15 +12,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(403).json({ error: "Access denied" });
   }
 
-  const supervisorId = session.user.id;
-
   try {
     const flaggedTasks = await prisma.task.findMany({
       where: {
         flagged: true,
-        project: {
-          supervisorId,
-        },
+        ...(userRole === "ADMIN"
+          ? {}
+          : {
+              project: {
+                supervisorId: session.user.id,
+              },
+            }),
       },
       include: {
         project: { select: { title: true } },

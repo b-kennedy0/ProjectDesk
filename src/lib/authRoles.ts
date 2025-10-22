@@ -6,7 +6,7 @@ export async function requireRole(req: any, res: any, roles: string[]) {
   if (!session) return { authorized: false, reason: "not_logged_in" };
 
   const userRole = session?.user?.role;
-  if (!roles.includes(userRole)) {
+  if (userRole !== "ADMIN" && !roles.includes(userRole)) {
     return { authorized: false, reason: "unauthorized" };
   }
 

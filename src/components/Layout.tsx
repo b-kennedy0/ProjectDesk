@@ -7,7 +7,7 @@ import { useRouter } from "next/router";
 import useSWR from "swr";
 import { Menu, Transition } from "@headlessui/react";
 import { BellIcon, ChevronDownIcon, UserCircleIcon } from "@heroicons/react/24/outline";
-import { LayoutDashboard, GraduationCap, Layers } from "lucide-react";
+import { LayoutDashboard, GraduationCap, Layers, ShieldCheck } from "lucide-react";
 
 import Logo from "@/assets/branding/ProjectDesk-Transparent.png";
 import { ProfileOverviewModal } from "@/components/account/ProfileOverviewModal";
@@ -51,8 +51,14 @@ export default function Layout({
       {
         label: "Task Library",
         href: "/supervisor/task-library",
-        roles: ["SUPERVISOR"],
+        roles: ["SUPERVISOR", "ADMIN"],
         icon: Layers,
+      },
+      {
+        label: "Admin",
+        href: "/admin",
+        roles: ["ADMIN"],
+        icon: ShieldCheck,
       },
     ],
     []

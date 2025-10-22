@@ -20,11 +20,12 @@ export default function TaskLibrary() {
   const [editName, setEditName] = useState<string>("");
   const fetcher = (url: string) => fetch(url).then((r) => r.json());
   const { data, error, mutate } = useSWR("/api/tasksets", fetcher);
+  const taskSets = Array.isArray(data) ? data : data?.taskSets || [];
 
   const userRole = (session?.user as any)?.role;
 
-  // Supervisor access check
-  if (!userRole || userRole !== "SUPERVISOR") {
+  // Supervisor/Admin access check
+  if (!userRole || (userRole !== "SUPERVISOR" && userRole !== "ADMIN")) {
     return (
       <Layout title="Access Denied">
         <p className="p-6 text-red-600">Access denied.</p>
@@ -89,11 +90,11 @@ export default function TaskLibrary() {
             <p>Loading...</p>
           ) : error ? (
             <p>Could not load task sets.</p>
-          ) : data.length === 0 ? (
+          ) : taskSets.length === 0 ? (
             <p>No task sets yet. Create one to get started.</p>
           ) : (
             <ul className="divide-y divide-gray-200">
-              {data.map((ts: any) => (
+              {taskSets.map((ts: any) => (
                 <li key={ts.id} className="flex justify-between items-center py-4">
                   <div className="flex items-center gap-3">
                     {editingId === ts.id ? (
