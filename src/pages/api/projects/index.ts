@@ -2,6 +2,57 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../auth/[...nextauth]";
+import { sendEmail } from "@/lib/mailer";
+
+type MemberInput = {
+  id?: number;
+  email: string;
+  name?: string | null;
+};
+
+async function resolveMembers(
+  inputs: MemberInput[] = [],
+  role: "STUDENT" | "COLLABORATOR"
+) {
+  const resolved: { user: any; isNew: boolean }[] = [];
+
+  for (const input of inputs) {
+    if (!input?.email) continue;
+    const email = input.email.trim().toLowerCase();
+    if (!email) continue;
+
+    let user = input.id
+      ? await prisma.user.findUnique({ where: { id: input.id } })
+      : await prisma.user.findUnique({ where: { email } });
+
+    let isNew = false;
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name: input.name?.trim() || null,
+          role,
+        },
+      });
+      isNew = true;
+    } else if (user.role === "STUDENT" && role === "COLLABORATOR") {
+      // Allow promoting collaborators if needed
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "COLLABORATOR" },
+      });
+    }
+
+    resolved.push({ user, isNew });
+  }
+
+  // Deduplicate by user id/email
+  const unique = new Map<number, { user: any; isNew: boolean }>();
+  for (const entry of resolved) {
+    unique.set(entry.user.id, entry);
+  }
+  return Array.from(unique.values());
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const session = (await getServerSession(req, res, authOptions as any)) as any;
@@ -12,7 +63,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === "POST") {
     try {
-      const { title, description, startDate, endDate, category } = req.body;
+      const { title, description, startDate, endDate, category, members } = req.body;
+
+      const studentMembers = await resolveMembers(members?.students, "STUDENT");
+      const collaboratorMembers = await resolveMembers(members?.collaborators, "COLLABORATOR");
 
       const project = await prisma.project.create({
         data: {
@@ -22,10 +76,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           endDate: endDate ? new Date(endDate) : null,
           category: category || "student-project",
           supervisor: {
-            connect: { email: session.user.email }, // ✅ Connect logged-in supervisor
+            connect: { email: session.user.email },
+          },
+          students: {
+            connect: studentMembers.map((entry) => ({ id: entry.user.id })),
+          },
+          collaborators: {
+            connect: collaboratorMembers.map((entry) => ({ id: entry.user.id })),
           },
         },
+        include: {
+          students: true,
+          collaborators: true,
+        },
       });
+
+      const invitees = [...studentMembers, ...collaboratorMembers];
+      await Promise.all(
+        invitees.map((entry) =>
+          sendEmail(
+            entry.user.email,
+            `You're invited to join "${project.title}" on ProjectDesk`,
+            `Hello ${entry.user.name || "there"},\n\nYou've been added to the project "${project.title}" on ProjectDesk.\nSign in or create an account using this email to view the project.\n\nThanks,\nProjectDesk`
+          )
+        )
+      );
 
       return res.status(201).json(project);
     } catch (error) {

@@ -1,8 +1,9 @@
 import { useRouter } from "next/router";
 import useSWR from "swr";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { toast, Toaster } from "react-hot-toast";
+import { MemberSelector, ProjectMemberFormValue } from "@/components/projects/MemberSelector";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -19,6 +20,9 @@ export default function EditProject() {
     endDate: "",
     category: "",
   });
+  const [students, setStudents] = useState<ProjectMemberFormValue[]>([]);
+  const [collaborators, setCollaborators] = useState<ProjectMemberFormValue[]>([]);
+  const [membersInitialized, setMembersInitialized] = useState(false);
 
   // Populate form when data loads
   if (project && form.title === "" && form.description === "") {
@@ -31,13 +35,41 @@ export default function EditProject() {
     });
   }
 
+  useEffect(() => {
+    if (project && !membersInitialized) {
+      setStudents(
+        (project.students || []).map((member: any) => ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: "STUDENT",
+        }))
+      );
+      setCollaborators(
+        (project.collaborators || []).map((member: any) => ({
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: "COLLABORATOR",
+        }))
+      );
+      setMembersInitialized(true);
+    }
+  }, [project, membersInitialized]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await fetch(`/api/projects/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          members: {
+            students,
+            collaborators,
+          },
+        }),
       });
 
       if (!res.ok) throw new Error("Failed to update project");
@@ -108,7 +140,20 @@ export default function EditProject() {
               <option value="student-project">Student Project</option>
               <option value="collaboration">Collaboration</option>
             </select>
-          </div>
+        </div>
+
+          <MemberSelector
+            label="Students"
+            role="STUDENT"
+            members={students}
+            onChange={setStudents}
+          />
+          <MemberSelector
+            label="Collaborators"
+            role="COLLABORATOR"
+            members={collaborators}
+            onChange={setCollaborators}
+          />
 
           <div className="flex justify-end gap-3 mt-6">
             <button

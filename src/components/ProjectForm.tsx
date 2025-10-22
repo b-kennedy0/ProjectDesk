@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { MemberSelector, ProjectMemberFormValue } from '@/components/projects/MemberSelector';
 
 export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
@@ -8,13 +9,25 @@ export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [category, setCategory] = useState("");
+  const [students, setStudents] = useState<ProjectMemberFormValue[]>([]);
+  const [collaborators, setCollaborators] = useState<ProjectMemberFormValue[]>([]);
 
   async function submit() {
     setLoading(true);
     const res = await fetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, description, startDate, endDate, category }),
+      body: JSON.stringify({
+        title,
+        description,
+        startDate,
+        endDate,
+        category,
+        members: {
+          students,
+          collaborators,
+        },
+      }),
     });
     setLoading(false);
     if (res.ok) {
@@ -24,6 +37,8 @@ export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
       setStartDate('');
       setEndDate('');
       setCategory("");
+      setStudents([]);
+      setCollaborators([]);
       onCreated();
     } else {
       const err = await res.json().catch(() => ({}));
@@ -61,7 +76,19 @@ export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
           <input type="date" className="border w-full rounded px-3 py-2" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <input type="date" className="border w-full rounded px-3 py-2" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
         </div>
-        <div className="flex gap-2">
+        <MemberSelector
+          label="Students"
+          role="STUDENT"
+          members={students}
+          onChange={setStudents}
+        />
+        <MemberSelector
+          label="Collaborators"
+          role="COLLABORATOR"
+          members={collaborators}
+          onChange={setCollaborators}
+        />
+        <div className="flex gap-2 pt-2">
           <button disabled={loading} onClick={submit} className="px-3 py-2 bg-black text-white rounded-md text-sm">
             {loading ? 'Creating…' : 'Create'}
           </button>

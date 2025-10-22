@@ -14,10 +14,11 @@ import { ProfileOverviewModal } from "@/components/account/ProfileOverviewModal"
 import { EditNameModal } from "@/components/account/EditNameModal";
 import { ChangeEmailModal } from "@/components/account/ChangeEmailModal";
 import { ChangePasswordModal } from "@/components/account/ChangePasswordModal";
+import { SupportTicketModal } from "@/components/account/SupportTicketModal";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-type AccountModalType = "profile" | "name" | "email" | "password";
+type AccountModalType = "profile" | "name" | "email" | "password" | "support";
 
 export default function Layout({
   title,
@@ -208,6 +209,16 @@ export default function Layout({
                     <Menu.Item>
                       {({ active }) => (
                         <button
+                          className={menuItemClass(active)}
+                          onClick={() => setActiveModal("support")}
+                        >
+                          Get help
+                        </button>
+                      )}
+                    </Menu.Item>
+                    <Menu.Item>
+                      {({ active }) => (
+                        <button
                           className={menuItemClass(active, "border-t border-gray-100")}
                           onClick={handleSignOut}
                         >
@@ -269,6 +280,12 @@ export default function Layout({
           <ChangePasswordModal
             open={activeModal === "password"}
             onClose={closeModal}
+          />
+          <SupportTicketModal
+            open={activeModal === "support"}
+            onClose={closeModal}
+            profile={accountProfile}
+            sessionUser={session.user}
           />
         </>
       )}
