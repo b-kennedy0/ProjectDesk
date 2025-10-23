@@ -69,7 +69,8 @@ export default function TaskSetDetails() {
 
   // Security check
   const userRole = (session?.user as any)?.role;
-  if (!userRole || userRole !== "SUPERVISOR") {
+  const canManageTaskSets = userRole === "SUPERVISOR" || userRole === "ADMIN";
+  if (!canManageTaskSets) {
     return (
       <Layout title="Access Denied">
         <p className="p-6 text-red-600">Access denied.</p>

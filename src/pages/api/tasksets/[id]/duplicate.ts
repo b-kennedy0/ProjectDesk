@@ -10,7 +10,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     const session = (await getServerSession(req, res, authOptions as any)) as any;
-    if (!session || session.user.role !== "SUPERVISOR") {
+    const userRole = session?.user?.role;
+    if (!userRole || (userRole !== "SUPERVISOR" && userRole !== "ADMIN")) {
       return res.status(403).json({ error: "Access denied" });
     }
 

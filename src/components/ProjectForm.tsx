@@ -73,8 +73,30 @@ export default function ProjectForm({ onCreated }: { onCreated: () => void }) {
   </select>
 </div>
         <div className="grid grid-cols-2 gap-3">
-          <input type="date" className="border w-full rounded px-3 py-2" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <input type="date" className="border w-full rounded px-3 py-2" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <div>
+            <label htmlFor="project-start-date" className="block text-sm font-medium mb-1">
+              Start Date
+            </label>
+            <input
+              id="project-start-date"
+              type="date"
+              className="border w-full rounded px-3 py-2"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label htmlFor="project-end-date" className="block text-sm font-medium mb-1">
+              End Date
+            </label>
+            <input
+              id="project-end-date"
+              type="date"
+              className="border w-full rounded px-3 py-2"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
         <MemberSelector
           label="Students"
